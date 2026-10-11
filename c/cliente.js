@@ -44,6 +44,7 @@
     $("#apple-titulo").setAttribute("content", b.nome.slice(0, 20));
     if (b.logo192_url) { $("#favicon").href = b.logo192_url; $("#apple-icon").href = b.logo_url || b.logo192_url; }
     document.documentElement.dataset.tema = b.tema || "claro";
+    U.corDaBarra();
     if (b.cor_barra) {
       const n = parseInt(b.cor_barra.slice(1), 16), luz = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
       document.documentElement.style.setProperty("--cor-barra", b.cor_barra);
@@ -64,9 +65,9 @@
     raiz.innerHTML = `
       <div class="fixo">
         <header class="cabeca"><div class="barra">
-          <img src="${esc(b.logo192_url || "")}" alt="">
+          ${b.logo192_url ? `<img src="${esc(b.logo192_url)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'logo-vazio',textContent:'${esc(iniciais(b.nome))}'}))">` : `<span class="logo-vazio">${esc(iniciais(b.nome))}</span>`}
           <div class="cab-textos"><h1>${esc(b.nome)}</h1>${statusHtml()}</div>
-          ${U.instalado() ? "" : `<button class="btn mini" id="instalar">Instalar app</button>`}
+          ${U.instalado() ? "" : `<button class="btn mini" id="instalar">${U.icone("baixar")}Instalar app</button>`}
         </div>
         <div class="busca-linha"><input id="busca" type="search" placeholder="Buscar corte, barba ou produto…" aria-label="Buscar" autocomplete="off"></div>
         </header>
@@ -166,7 +167,7 @@
         </div>
         ${br.agendados_hoje && br.agendados_hoje.length ? `<p class="pequeno suave agendados-hoje">Agendados hoje: ${br.agendados_hoje.map(esc).join(", ")}</p>` : ""}
       </div>`;
-    }).join("")}</div>${barbeiros.length > 2 ? `<p class="pequeno suave dica-rolar">↕ Role para ver os outros barbeiros (${barbeiros.length}).</p>` : ""}${!ab ? `<p class="pequeno suave">A barbearia está fechada agora, mas você pode agendar.</p>` : ""}</div>`;
+    }).join("")}</div>${barbeiros.length > 2 ? `<p class="pequeno suave dica-rolar">${U.icone("rolar")}Role para ver os outros barbeiros (${barbeiros.length}).</p>` : ""}${!ab ? `<p class="pequeno suave">A barbearia está fechada agora, mas você pode agendar.</p>` : ""}</div>`;
     limitarFila(alvo, topoAntes);
     $$("#fila [data-a]").forEach((bt) => (bt.onclick = () => {
       const br = barbeiros[Number(bt.closest(".fila-barbeiro").dataset.i)];
@@ -190,13 +191,18 @@
     const outro = servicos.find((s) => tipoDe(s) === t);
     if (servicos.some((s) => s.id === it.id)) servicos = servicos.filter((s) => s.id !== it.id);
     else { servicos = servicos.filter((s) => s !== outro); servicos.push(it); }
-    salvarSacola(); desenharLista(); desenharBarra();
+    salvarSacola(); desenharLista(); desenharBarra(); balancar(it);
     if (servicos.includes(it)) U.aviso(outro ? `Trocado: ${it.nome} no lugar de ${outro.nome}.` : `${it.nome} em serviços solicitados.`);
   }
   function porNoCarrinho(it) {
     const x = carrinho.find((c) => c.item.id === it.id);
     if (x) x.qtd = Math.min(20, x.qtd + 1); else carrinho.push({ item: it, qtd: 1 });
-    salvarSacola(); desenharLista(); desenharBarra(); U.aviso(`${it.nome} no carrinho.`);
+    salvarSacola(); desenharLista(); desenharBarra(); balancar(it); U.aviso(`${it.nome} no carrinho.`);
+  }
+  /* A etiqueta balança no ilhós quando o cliente toca no canhoto. */
+  function balancar(it) {
+    const card = $(`#lista .item-card[data-id="${CSS.escape(String(it.id))}"]`);
+    if (card) card.classList.add("balanca");
   }
 
   function desenharBarra() {
@@ -206,9 +212,9 @@
     const nCar = carrinho.reduce((s, x) => s + x.qtd, 0);
     el.classList.toggle("oculto", !servicos.length && !nCar && !ativos.length);
     el.innerHTML = `
-      ${servicos.length ? `<button class="btn" id="ver-servicos">✂️ Serviços solicitados (${servicos.length})</button>` : ""}
-      ${nCar ? `<button class="btn" id="ver-carrinho">🛒 Carrinho (${nCar})</button>` : ""}
-      ${ativos.length ? `<button class="btn sec" id="ver-meus">📋 Meus pedidos (${ativos.length})</button>` : ""}`;
+      ${servicos.length ? `<button class="btn" id="ver-servicos">${U.icone("tesoura")}Serviços solicitados (${servicos.length})</button>` : ""}
+      ${nCar ? `<button class="btn" id="ver-carrinho">${U.icone("sacola")}Carrinho (${nCar})</button>` : ""}
+      ${ativos.length ? `<button class="btn sec" id="ver-meus">${U.icone("lista")}Meus pedidos (${ativos.length})</button>` : ""}`;
     if ($("#ver-servicos")) $("#ver-servicos").onclick = verServicos;
     if ($("#ver-carrinho")) $("#ver-carrinho").onclick = verCarrinho;
     if ($("#ver-meus")) $("#ver-meus").onclick = verMeus;
