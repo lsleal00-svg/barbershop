@@ -178,7 +178,7 @@
     } catch (err) { barb = perfil.barbearia; }
     aplicarTema(barb);
     document.title = perfil.barbearia.nome + " — Painel";
-    if (!aba) aba = ehDono() ? "cardapio" : "inicio";
+    if (!aba) aba = "fila";
     desenharCasca();
   }
 
@@ -224,8 +224,8 @@
   }
 
   function abasDoPapel() {
-    if (ehDono()) return [["cardapio", "Cardápio"], ["horario", "Horário"], ["equipe", "Equipe"], ["pagamento", "Pagamento"], ["config", "Configurações"]];
-    return [["inicio", "Início"], ["config", "Configurações"]];
+    if (ehDono()) return [["fila", "Fila"], ["cardapio", "Cardápio"], ["horario", "Horário"], ["equipe", "Equipe"], ["pagamento", "Pagamento"], ["config", "Configurações"]];
+    return [["fila", "Fila"], ["config", "Configurações"]];
   }
 
   function desenharCasca() {
@@ -267,7 +267,14 @@
   /* ---------- equipe (só dono) ---------- */
   async function telaEquipeDono() {
     $("#corpo").innerHTML = `
-      <section class="cartao"><h2>Cadastrar na equipe</h2>
+      <section class="cartao" id="perfil-dono"><h2>Você também atende?</h2>
+        <label class="linha-check"><input type="checkbox" id="pd-atende"${barb.dono_atende !== false ? " checked" : ""}${leitura() ? " disabled" : ""}> Sim, eu também corto: quero ter a minha fila</label>
+        <div class="form-equipe" style="margin-top:.75rem">
+          <div class="campo"><label for="pd-nome">Seu nome na fila</label><input id="pd-nome" maxlength="40" value="${esc(barb.dono_nome || "")}" placeholder="${esc(barb.nome)}"${leitura() ? " disabled" : ""}></div>
+          <div class="campo"><label for="pd-foto">Sua foto (opcional)</label><div class="logo-escolha">${barb.dono_foto_url ? `<img class="foto-mini" src="${esc(barb.dono_foto_url)}" alt="">` : ""}<input id="pd-foto" type="file" accept="image/*"${leitura() ? " disabled" : ""}></div></div>
+        </div>
+        <button class="btn sec" id="pd-salvar"${leitura() ? " disabled" : ""}>Salvar</button></section>
+      <section class="cartao" style="margin-top:1rem"><h2>Cadastrar na equipe</h2>
         <p class="pequeno suave">O barbeiro associado só vê a fila dele e os pedidos de corte e barba. O caixa vê o caixa e ajuda a organizar a fila. Nenhum dos dois edita o seu site.</p>
         <form id="f-eq" class="form-equipe" novalidate>
           <div class="campo"><label for="eq-papel">Função</label><select id="eq-papel"><option value="associado">Barbeiro associado</option><option value="caixa">Caixa</option></select></div>
@@ -286,6 +293,14 @@
       $("#eq-foto-campo").classList.toggle("oculto", caixa);
     };
     $("#eq-papel").onchange = ajustar; ajustar();
+    $("#pd-salvar").onclick = (e) => U.ocupado(e.target, async () => {
+      try {
+        const muda = { dono_atende: $("#pd-atende").checked, dono_nome: $("#pd-nome").value.trim() || null };
+        const arq = $("#pd-foto").files[0];
+        if (arq) muda.dono_foto_url = await enviarFoto(arq);
+        await salvarBarbearia(muda); U.aviso("Perfil salvo."); telaEquipeDono();
+      } catch (err) { U.aviso(err.message, "erro"); }
+    });
     $("#f-eq").onsubmit = salvarMembro;
     await carregarEquipe();
   }

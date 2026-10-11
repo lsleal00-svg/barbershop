@@ -1,10 +1,10 @@
 /* Service worker do app do barbeiro: abre rápido e mostra a tela mesmo sem internet.
    Mude VERSAO a cada atualização publicada para os celulares baixarem a nova. */
-const VERSAO = "painel-v2";
+const VERSAO = "painel-v3";
 const ARQUIVOS = [
   "./", "./index.html", "./app.css", "./app.js", "./manifest.webmanifest",
   "./icones/icone-192.png", "./icones/icone-512.png", "./icones/icone-180.png", "./icones/icone-32.png",
-  "../css/cardapio.css", "../js/horario.js", "../js/pix.js", "../js/cardapio.js", "../vendor/jspdf.umd.min.js", "./cardapio-admin.js", "./horario-admin.js", "./pagamento.js", "../css/base.css", "../js/supa.js", "../js/util.js", "../vendor/qrcode.js", "../config.js",
+  "../css/cardapio.css", "../js/horario.js", "../js/pix.js", "../js/cardapio.js", "../vendor/jspdf.umd.min.js", "./cardapio-admin.js", "./horario-admin.js", "./pagamento.js", "./fila.js", "../css/base.css", "../js/supa.js", "../js/util.js", "../vendor/qrcode.js", "../config.js",
 ];
 
 self.addEventListener("install", (e) => {
@@ -25,4 +25,19 @@ self.addEventListener("fetch", (e) => {
       return r;
     }).catch(() => caches.match(e.request, { ignoreSearch: true }).then((r) => r || caches.match("./index.html")))
   );
+});
+
+// Aviso de pedido novo (chega sem conteúdo: a função "notificar" só cutuca o celular).
+self.addEventListener("push", (e) => {
+  e.waitUntil(self.registration.showNotification("Novo pedido na barbearia", {
+    body: "Toque para ver e aprovar.", icon: "icones/icone-192.png", badge: "icones/icone-192.png",
+    tag: "pedido", renotify: true, vibrate: [200, 100, 200],
+  }));
+});
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((lista) => {
+    for (const c of lista) if (c.url.includes("/app/")) return c.focus();
+    return self.clients.openWindow("./");
+  }));
 });

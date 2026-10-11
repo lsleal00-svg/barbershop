@@ -90,3 +90,30 @@
 @media (min-width: 760px) { .chave-item { grid-template-columns: 1fr auto; align-items: center; } }
 .mono { font-family: ui-monospace, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
 @media (max-width: 520px) { .abas button { padding: .6rem .5rem; font-size: .9rem; } }
+
+/* ---------- Fase 3: fila ---------- */
+.fila-painel { display: grid; gap: 1rem; }
+.avisos-cartao { display: flex; gap: .75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.avisos-acoes { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.contador-pend { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 13px; background: var(--vermelho); color: #fff; font-size: .85rem; padding: 0 .4rem; vertical-align: middle; }
+.pendente { border: 2px solid var(--ouro); border-radius: 12px; padding: .75rem; display: grid; gap: .3rem; margin-bottom: .6rem; }
+.pend-topo { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.pend-topo .selo { margin-left: auto; }
+.pend-acoes { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .3rem; }
+.pend-acoes .btn:first-child { flex: 1 1 220px; }
+.aviso-pix { background: #fbefd5; color: #6b4600; border-radius: 8px; padding: .35rem .55rem; }
+.link-zap { font-size: .8rem; color: var(--verde); font-weight: 700; }
+.fila-item { display: grid; grid-template-columns: 40px 1fr; gap: .6rem; padding: .7rem; border: 1px solid var(--linha); border-radius: 12px; margin-bottom: .5rem; align-items: center; }
+.fila-item.atendendo { border: 2px solid #2f7d4f; background: rgba(47, 125, 79, .08); }
+.fila-item.agendado { border-style: dashed; border-color: #6b3fa0; }
+.fila-item.atendendo.agendado { border-style: solid; }
+.fi-pos { font-weight: 800; font-size: 1.1rem; text-align: center; color: var(--ouro); }
+.fi-info .selo { margin: .25rem .2rem 0 0; }
+.selo.roxo { background: #ece3f7; color: #5a2f8f; }
+[data-tema="escuro"] .selo.roxo { background: #33264a; color: #d4bdf3; }
+.fi-acoes { grid-column: 1 / -1; display: flex; gap: .4rem; flex-wrap: wrap; }
+.fi-acoes .btn:not(.mini) { flex: 1 1 200px; }
+.seta-fila { min-width: 44px; }
+@media (min-width: 760px) { .fila-item { grid-template-columns: 40px 1fr auto; } .fi-acoes { grid-column: auto; justify-content: flex-end; } }
+.pedido-linha { display: flex; justify-content: space-between; gap: .6rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid var(--linha); }
+.foto-mini { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
