@@ -1,4 +1,4 @@
-/* base.css — visual comum. Cores tiradas do logo: tinta, creme, dourado e vermelho. */
+/* base.css — visual comum. Base neutra (creme) + temas. O tema "claro" (padrão) é azul-claro com branco. */
 :root {
   --fundo: #f7f4ee;
   --cartao: #ffffff;
@@ -16,12 +16,20 @@
   --raio: 12px;
   color-scheme: light;
 }
+/* claro (padrão, também nas telas sem tema): azul-claro com branco */
+:root:not([data-tema]), [data-tema="claro"] {
+  --fundo: #e8f2fc; --cartao: #ffffff; --tinta: #10233a; --suave: #55687e; --linha: #cfe0f1;
+  --destaque: #1e6fbf; --destaque-texto: #ffffff; --ouro: #2f80c9; --campo: #ffffff;
+  --sombra: 0 1px 2px rgba(16, 35, 58, .06), 0 6px 18px rgba(30, 111, 191, .08);
+}
 [data-tema="escuro"] {
   --fundo: #141311; --cartao: #1f1d1a; --tinta: #f2eee6; --suave: #a9a296; --linha: #34302a;
   --destaque: #c9a96a; --destaque-texto: #141311; --campo: #191816; --ouro: #c9a96a;
   --sombra: 0 1px 2px rgba(0,0,0,.4); color-scheme: dark;
 }
-[data-tema="vermelho"] { --destaque: #b8322a; --destaque-texto: #fff; --fundo: #fbf3f1; }
+[data-tema="vermelho"] { --destaque: #d00018; --destaque-texto: #fff; --fundo: #ffe8ea; --linha: #f5c2c7; --ouro: #b0001a;
+  --tinta: #2b0a0e; --suave: #7a4a50; --vermelho: #9e0016; --sombra: 0 1px 2px rgba(120, 0, 20, .08), 0 6px 18px rgba(208, 0, 24, .12); }
+[data-tema="vermelho"] .topo-app, [data-tema="vermelho"] .cabeca { border-bottom: 3px solid #d00018; }
 [data-tema="verde"]    { --destaque: #2f6e47; --destaque-texto: #fff; --fundo: #f2f7f3; }
 [data-tema="amarelo"]  { --destaque: #d9a521; --destaque-texto: #1d1b18; --fundo: #fdf8ea; }
 
@@ -110,3 +118,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ouro); outl
 .acoes-entrada { display: grid; gap: .5rem; }
 .aviso-config { background: #fbefd5; color: #6b4600; border-radius: 10px; padding: .75rem; font-size: .9rem; margin-bottom: 1rem; }
 .qr { display: block; margin: 0 auto; max-width: 100%; height: auto; border-radius: 8px; }
+
+/* ---------- ver a senha ---------- */
+.campo-senha { position: relative; }
+.campo-senha input { padding-right: 3rem; }
+.ver-senha { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border: 0; background: none; color: var(--suave); cursor: pointer; display: grid; place-items: center; border-radius: 8px; }
+.ver-senha:hover, .ver-senha.ativo { color: var(--destaque); }
+.ver-senha svg { width: 22px; height: 22px; }
