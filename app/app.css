@@ -1,0 +1,30 @@
+.topo-app { position: sticky; top: 0; z-index: 10; background: var(--cartao); border-bottom: 1px solid var(--linha); }
+.topo-app .barra { display: flex; align-items: center; gap: .7rem; padding: .6rem 1rem; max-width: 900px; margin: 0 auto; }
+.topo-app .logo { width: 42px; height: 42px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); flex: none; }
+.topo-app .nome { font-weight: 700; line-height: 1.15; }
+.topo-app .papel { font-size: .78rem; color: var(--suave); }
+.abas { display: flex; gap: .25rem; max-width: 900px; margin: 0 auto; padding: 0 .5rem; overflow-x: auto; scrollbar-width: none; }
+.abas::-webkit-scrollbar { display: none; }
+.abas button { background: none; border: 0; font: inherit; font-weight: 600; color: var(--suave); padding: .65rem .8rem; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap; min-height: 44px; }
+.abas button[aria-selected="true"] { color: var(--tinta); border-bottom-color: var(--destaque); }
+.corpo-app { max-width: 900px; margin: 0 auto; padding: 1rem 1rem 4rem; }
+.faixa-leitura { background: #f8e1df; color: #7f1d16; padding: .7rem 1rem; font-size: .9rem; text-align: center; }
+.boas-vindas { display: flex; gap: 1rem; align-items: center; }
+.boas-vindas img { width: 64px; height: 64px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); }
+.em-breve { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .4rem; }
+.em-breve li { padding: .6rem .8rem; border: 1px dashed var(--linha); border-radius: 10px; color: var(--suave); font-size: .92rem; }
+.linha-acoes { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; }
+.link-texto { word-break: break-all; font-size: .88rem; background: var(--fundo); padding: .5rem .7rem; border-radius: 8px; border: 1px solid var(--linha); margin: .75rem 0 0; }
+.grade-2 { display: grid; gap: 1rem; }
+@media (min-width: 760px) { .grade-2 { grid-template-columns: 1fr 1fr; } }
+.membros { display: grid; gap: .6rem; margin-top: .75rem; }
+.membro { display: grid; grid-template-columns: 48px 1fr; gap: .7rem; align-items: center; padding: .75rem; border: 1px solid var(--linha); border-radius: 12px; }
+.membro .foto { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; background: var(--fundo); display: grid; place-items: center; font-weight: 700; color: var(--suave); border: 1px solid var(--linha); }
+.membro .acoes { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .4rem; }
+@media (min-width: 760px) { .membro { grid-template-columns: 48px 1fr auto; } .membro .acoes { grid-column: auto; } }
+.form-equipe { display: grid; gap: .1rem 1rem; }
+@media (min-width: 760px) { .form-equipe { grid-template-columns: 1fr 1fr; } }
+.passo-titulo { display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
+.passo-titulo button { background: none; border: 0; font-size: 1.4rem; cursor: pointer; width: 40px; height: 40px; color: var(--tinta); }
+.codigo-grande { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.8rem; letter-spacing: .25em; text-align: center; padding: .8rem; background: var(--fundo); border: 2px dashed var(--ouro); border-radius: 12px; margin: .5rem 0 1rem; }
+.instalar-fixo { margin-top: 1rem; }
