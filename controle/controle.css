@@ -1,0 +1,22 @@
+.topo-ctrl { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; max-width: 1100px; margin: 0 auto; }
+.topo-ctrl .rotulo { font-size: .7rem; letter-spacing: .12em; color: var(--suave); text-transform: uppercase; }
+.topo-ctrl h1 { margin: 0; }
+.conteudo { max-width: 1100px; margin: 0 auto; padding: 0 1rem 3rem; }
+.grade-form { display: grid; gap: .25rem 1rem; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .grade-form { grid-template-columns: 1.2fr 1.2fr .8fr; } .grade-form .largo { grid-column: 1 / -1; } }
+.logo-escolha { display: flex; align-items: center; gap: 1rem; }
+.logo-previa { width: 72px; height: 72px; border-radius: 50%; border: 1px dashed var(--ouro); background: #fff center/contain no-repeat; flex: none; display: grid; place-items: center; color: var(--suave); font-size: .7rem; text-align: center; }
+.logo-escolha input[type=file] { min-height: 0; padding: .5rem; }
+.barra-lista { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; }
+.barra-lista input { flex: 1 1 220px; }
+.lista { display: grid; gap: .75rem; }
+.item { display: grid; grid-template-columns: 56px 1fr; gap: .75rem; padding: .9rem; border: 1px solid var(--linha); border-radius: 12px; background: var(--cartao); }
+.item img { width: 56px; height: 56px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); }
+.item h3 { margin: 0 0 .15rem; }
+.item .meta { display: flex; flex-wrap: wrap; gap: .35rem .9rem; font-size: .85rem; color: var(--suave); margin: .35rem 0; }
+.item .selos { display: flex; gap: .35rem; flex-wrap: wrap; }
+.item .acoes { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .4rem; }
+@media (min-width: 900px) { .item { grid-template-columns: 56px 1fr auto; align-items: center; } .item .acoes { grid-column: auto; justify-content: flex-end; max-width: 430px; } }
+.vazio { text-align: center; color: var(--suave); padding: 2rem 1rem; }
+.mensagem { white-space: pre-wrap; background: var(--fundo); border: 1px solid var(--linha); border-radius: 10px; padding: .8rem; font-size: .92rem; }
+.contador { margin-left: auto; font-size: .85rem; color: var(--suave); }
