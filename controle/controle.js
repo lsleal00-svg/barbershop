@@ -73,8 +73,8 @@
   /* =================== painel =================== */
   function telaPainel() {
     raiz.innerHTML = `
-      <header class="topo-ctrl"><div><div class="rotulo">Painel de administração</div><h1>Controle de Barbearias</h1></div>
-        <button class="btn sec mini" id="sair">Sair</button></header>
+      <header class="topo-ctrl"><div class="topo-ctrl-in"><img class="marca-ctrl" src="../app/icones/icone-192.png" alt=""><div class="topo-ctrl-txt"><h1>Controle de Barbearias</h1><div class="rotulo">Painel de administração</div></div>
+        <button class="btn sec mini" id="sair">${U.icone("sair")}Sair</button></div></header>
       <main class="conteudo">
         <section class="cartao">
           <h2>Cadastrar barbearia</h2>
