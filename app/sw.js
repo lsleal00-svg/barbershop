@@ -1,6 +1,6 @@
 /* Service worker do app do barbeiro: abre rápido e mostra a tela mesmo sem internet.
    Mude VERSAO a cada atualização publicada para os celulares baixarem a nova. */
-const VERSAO = "painel-v4";
+const VERSAO = "painel-v5";
 const ARQUIVOS = [
   "./", "./index.html", "./app.css", "./app.js", "./manifest.webmanifest",
   "./icones/icone-192.png", "./icones/icone-512.png", "./icones/icone-180.png", "./icones/icone-32.png",
@@ -28,11 +28,15 @@ self.addEventListener("fetch", (e) => {
 });
 
 // Aviso de pedido novo (chega sem conteúdo: a função "notificar" só cutuca o celular).
+// Também avisa as telas abertas do painel, que se atualizam na hora.
 self.addEventListener("push", (e) => {
-  e.waitUntil(self.registration.showNotification("Novo pedido na barbearia", {
-    body: "Toque para ver e aprovar.", icon: "icones/icone-192.png", badge: "icones/icone-192.png",
-    tag: "pedido", renotify: true, vibrate: [200, 100, 200],
-  }));
+  e.waitUntil(Promise.all([
+    self.registration.showNotification("Novo pedido na barbearia", {
+      body: "Toque para ver e aprovar.", icon: "icones/icone-192.png", badge: "icones/icone-192.png",
+      tag: "pedido", renotify: true, vibrate: [200, 100, 200],
+    }),
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((lista) => lista.forEach((c) => c.postMessage({ tipo: "pedido" }))),
+  ]));
 });
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();

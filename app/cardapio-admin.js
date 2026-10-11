@@ -20,7 +20,7 @@
   }
 
   async function tela(corpo) {
-    corpo.innerHTML = `<p class="suave">Carregando cardápio…</p>`;
+    corpo.innerHTML = `<p class="suave">Carregando serviços e produtos…</p>`;
     try { await carregar(); } catch (err) { corpo.innerHTML = `<p class="suave">${esc(err.message)}</p>`; return; }
     desenhar(corpo);
   }
@@ -64,7 +64,7 @@
   function acoesItem(it) {
     return `<button class="btn sec" data-a="editar"${dis()}>Editar</button>
       <button class="btn sec" data-a="desconto"${dis()}>${it.desconto ? `-${it.desconto}%` : "Desconto"}</button>
-      <button class="btn sec" data-a="destaque"${dis()} title="${it.destaque ? "Retirar do destaque" : "Inserir na lista de destaque"}">${it.destaque ? "★ Tirar destaque" : "☆ Destacar"}</button>
+      <button class="btn sec" data-a="destaque"${dis()} title="${it.destaque ? "Remover do destaque" : "Inserir na lista de destaque"}">${it.destaque ? "★ Remover destaque" : "☆ Destacar"}</button>
       <button class="btn sec" data-a="esgotado"${dis()}>${it.esgotado ? "Disponível" : "Esgotado"}</button>
       <button class="btn perigo" data-a="excluir"${dis()} aria-label="Excluir">Excluir</button>`;
   }
@@ -165,7 +165,7 @@
     const aberto = U.modal(novo ? C.NOVO[cat.tipo] : "Editar " + (cat.tipo === "outros" ? "produto" : "corte"), `
       <div class="foto-escolha"><img id="it-previa" src="${esc(it ? C.foto(it, cat.tipo) : C.imagemPadrao(cat.tipo))}" alt="">
         <div><label for="it-foto">Foto (opcional)</label><input id="it-foto" type="file" accept="image/*">
-        ${it && it.foto_url ? `<button type="button" class="link" id="it-sem-foto">Tirar a foto</button>` : ""}
+        ${it && it.foto_url ? `<button type="button" class="link" id="it-sem-foto">Remover a foto</button>` : ""}
         <p class="pequeno suave">${cat.tipo === "outros" ? "Sem foto, aparece um desenho de sacola." : "Sem foto, aparece o desenho de tesoura e pente."}</p></div></div>
       <div class="campo"><label for="it-nome">Nome</label><input id="it-nome" maxlength="60" value="${esc(it ? it.nome : "")}" placeholder="${cat.tipo === "outros" ? "Ex.: Boné preto" : cat.tipo === "barba" ? "Ex.: Barba completa" : "Ex.: Degradê"}"></div>
       <div class="campo"><label for="it-preco">Preço (R$)</label><input id="it-preco" inputmode="decimal" value="${it ? String(it.preco).replace(".", ",") : ""}" placeholder="35,00"></div>`, [
@@ -229,7 +229,7 @@
   async function alternar(it, campo) {
     try {
       await salvarCampo(it, { [campo]: !it[campo] },
-        campo === "destaque" ? (it.destaque ? "Retirado do destaque." : "Inserido na lista de destaque.") : (it.esgotado ? "Marcado como disponível." : "Marcado como esgotado: some para os clientes."));
+        campo === "destaque" ? (it.destaque ? "Removido do destaque." : "Inserido na lista de destaque.") : (it.esgotado ? "Marcado como disponível." : "Marcado como esgotado: some para os clientes."));
     } catch (err) { U.aviso(err.message, "erro"); }
   }
   async function excluirItem(it) {

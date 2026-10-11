@@ -11,6 +11,7 @@
   let barb = null;            // linha completa da barbearia (configurações)
   let aba = null;
   let relogioStatus = null;
+  let vigia = null, pendentesConhecidos = null;
   let equipe = [];
 
   U.registrarSW("sw.js");
@@ -82,7 +83,7 @@
       if (!email || !codigo) return U.aviso("Preencha o e-mail e o código.", "erro");
       if (senha.length < 6) return U.aviso("A senha precisa ter pelo menos 6 caracteres.", "erro");
       if (senha !== $("#senha2").value) return U.aviso("As duas senhas não são iguais.", "erro");
-      await U.ocupado($("#f button"), async () => {
+      await U.ocupado($("#f button[type=submit]"), async () => {
         try {
           await S.fn("acesso", { acao: "primeiro_acesso", email, codigo, senha });
           await S.entrar(email, senha, true);
@@ -147,7 +148,7 @@
       e.preventDefault();
       const codigo = $("#codigo").value.toUpperCase().replace(/[^0-9A-Z]/g, "");
       if (codigo.length !== 8) return U.aviso("O código tem 8 letras e números.", "erro");
-      await U.ocupado($("#f button"), async () => {
+      await U.ocupado($("#f button[type=submit]"), async () => {
         try {
           const r = await S.fn("acesso", { acao: "entrar_codigo", codigo });
           S.guardarSessao(r.sessao, $("#manter").checked);
@@ -224,7 +225,7 @@
   }
 
   function abasDoPapel() {
-    if (ehDono()) return [["fila", "Fila"], ["caixa", "Caixa"], ["cardapio", "Cardápio"], ["horario", "Horário"], ["equipe", "Equipe"], ["pagamento", "Pagamento"], ["config", "Configurações"]];
+    if (ehDono()) return [["fila", "Fila"], ["caixa", "Caixa"], ["cardapio", "Serviços & Produtos"], ["horario", "Horário"], ["equipe", "Equipe"], ["pagamento", "Pagamento"], ["config", "Configurações"]];
     if (perfil.papel === "caixa") return [["fila", "Fila"], ["caixa", "Caixa"], ["config", "Configurações"]];
     return [["fila", "Fila"], ["config", "Configurações"]];
   }
@@ -237,6 +238,7 @@
         <img class="logo" src="${esc(b.logo192_url || "icones/icone-192.png")}" alt="">
         <div class="topo-textos"><div class="nome">${esc(b.nome)}</div><div class="papel">${esc(perfil.papel === "dono" ? NOME_PAPEL.dono : perfil.nome + " · " + NOME_PAPEL[perfil.papel])}</div></div>
         <div class="topo-direita"><span id="status-topo" class="status-pill"></span><span id="online-topo" class="online oculto"></span></div>
+        <button class="btn mini sec sair-topo" id="sair-topo" aria-label="Sair">Sair</button>
       </div>
       <nav class="abas" role="tablist">${abasDoPapel().map(([id, t]) => `<button role="tab" data-aba="${id}" aria-selected="${id === aba}">${t}</button>`).join("")}</nav>
       </header>
@@ -246,6 +248,9 @@
     pintarStatus(); pintarOnline();
     clearInterval(relogioStatus);
     relogioStatus = setInterval(() => { pintarStatus(); pintarOnline(); }, 30000);
+    $("#sair-topo").onclick = sair;
+    marcarPendentes();
+    iniciarVigia();
     const telas = Object.assign({ inicio: telaInicio, equipe: telaEquipeDono, config: telaConfig }, window.APP_ABAS || {});
     telas[aba]($("#corpo"));
   }
@@ -462,17 +467,17 @@
     $("#c-whats").onclick = () => U.whatsapp(`Agora a *${b.nome}* tem app! Veja cortes, produtos e a fila, e peça seu corte por aqui: ${link}`);
     $("#c-qr").onclick = () => {
       const img = new Image(); img.crossOrigin = "anonymous";
-      const fim = () => U.baixar(U.qrPng(link, b.nome, img.naturalWidth ? img : null) || U.qrPng(link, b.nome), `qrcode-${b.slug}.png`);
+      const fim = () => U.baixar(U.qrPng(link, b.nome, img.naturalWidth ? img : null, U.FRASE_QR) || U.qrPng(link, b.nome, null, U.FRASE_QR), `qrcode-${b.slug}.png`);
       img.onload = fim; img.onerror = fim;
       if (b.logo192_url) img.src = b.logo192_url; else fim();
     };
     ligarInstalar();
     if (ehDono()) ligarConfigDono();
-    $("#sair").onclick = async () => { await S.sair(); perfil = null; barb = null; aba = null; clearInterval(relogioStatus); document.documentElement.dataset.tema = "claro"; telaLogin(); };
+    $("#sair").onclick = sair;
     if ($("#trocar-senha")) $("#trocar-senha").onclick = trocarSenha;
   }
 
-  const TEMAS = [["claro", "Claro", "#f7f4ee", "#1d1b18"], ["escuro", "Escuro", "#141311", "#c9a96a"], ["vermelho", "Vermelho", "#fbf3f1", "#b8322a"], ["verde", "Verde", "#f2f7f3", "#2f6e47"], ["amarelo", "Amarelo", "#fdf8ea", "#d9a521"]];
+  const TEMAS = [["claro", "Claro", "#e8f2fc", "#1e6fbf"], ["escuro", "Escuro", "#141311", "#c9a96a"], ["vermelho", "Vermelho", "#ffe8ea", "#d00018"], ["verde", "Verde", "#f2f7f3", "#2f6e47"], ["amarelo", "Amarelo", "#fdf8ea", "#d9a521"]];
 
   function blocoConfigDono() {
     const st = HORARIO.situacao(barb), tem = HORARIO.temHorario(barb.horarios);
@@ -536,6 +541,53 @@
   }
 
   /* =================== peças para os outros arquivos do painel =================== */
+  async function sair() {
+    const ok = await U.confirmar("Sair", "Quer sair do painel neste aparelho?", "Sair");
+    if (!ok) return;
+    await S.sair(); perfil = null; barb = null; aba = null; pendentesConhecidos = null;
+    clearInterval(relogioStatus); clearInterval(vigia);
+    document.documentElement.dataset.tema = "claro"; document.documentElement.style.cssText = "";
+    telaLogin();
+  }
+
+  /* ---------- pedido novo: a tela se atualiza sozinha em qualquer aba ---------- */
+  function marcarPendentes(n) {
+    const bt = $('.abas [data-aba="fila"]');
+    if (!bt) return;
+    if (n === undefined) n = bt.dataset.n ? Number(bt.dataset.n) : 0;
+    bt.dataset.n = n;
+    bt.innerHTML = "Fila" + (n ? ` <span class="contador-pend">${n}</span>` : "");
+  }
+  async function verificarPedidos(veioDoAviso) {
+    if (!perfil || document.visibilityState !== "visible") return;
+    try {
+      const d = await S.rpc("painel_fila");
+      const ids = d.pendentes.map((p) => p.id);
+      const novos = pendentesConhecidos ? ids.filter((id) => !pendentesConhecidos.has(id)) : [];
+      pendentesConhecidos = new Set(ids);
+      marcarPendentes(ids.length);
+      if (aba === "fila") {
+        // a própria aba Fila toca o som; aqui só redesenha na hora
+        if (veioDoAviso || novos.length) { if (!$(".modal-fundo")) window.APP_ABAS.fila($("#corpo")); }
+        return;
+      }
+      if (novos.length) {
+        U.bip();
+        U.aviso(novos.length === 1 ? "Novo pedido! Abra a aba Fila." : `${novos.length} pedidos novos! Abra a aba Fila.`);
+        if (aba === "caixa" && !$(".modal-fundo")) window.APP_ABAS.caixa($("#corpo"));
+      }
+    } catch (e) { /* sem internet: tenta de novo */ }
+  }
+  function iniciarVigia() {
+    clearInterval(vigia);
+    verificarPedidos();
+    vigia = setInterval(() => { if (aba !== "fila") verificarPedidos(); }, 10000);
+  }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && e.data.tipo === "pedido") verificarPedidos(true); });
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && perfil) verificarPedidos(true); });
+
   window.APP = {
     S, esc,
     perfil: () => perfil,
@@ -543,6 +595,7 @@
     leitura, ehDono,
     salvarBarbearia,
     redesenhar: () => desenharCasca(),
+    marcarPendentes,
     linkCliente,
   };
 

@@ -15,21 +15,7 @@
   const zapLink = (n) => n ? `<a class="link-zap" href="https://wa.me/55${esc(String(n).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, ""))}" target="_blank" rel="noopener">WhatsApp</a>` : "";
   const itensTxt = (p) => (p.itens || []).map((i) => `${i.qtd > 1 ? i.qtd + " × " : ""}${esc(i.nome)}`).join(", ");
 
-  function bip() {
-    if (!somLigado()) return;
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      [0, 0.18].forEach((t) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
-        g.gain.setValueAtTime(0.0001, ctx.currentTime + t);
-        g.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + t + 0.15);
-        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.16);
-      });
-    } catch (e) { /* sem som */ }
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-  }
+  const bip = () => { if (somLigado()) U.bip(); };
 
   async function carregar() {
     dados = await A().S.rpc("painel_fila");
@@ -39,6 +25,7 @@
       if (novos.length) { bip(); U.aviso(novos.length === 1 ? `Novo pedido de ${novos[0].cliente_nome}!` : `${novos.length} pedidos novos!`); }
     }
     conhecidos = ids;
+    if (A().marcarPendentes) A().marcarPendentes(ids.size);
   }
 
   async function tela(corpo) {
@@ -106,7 +93,7 @@
           <button class="btn mini sec seta-fila" data-a="subir" aria-label="Passar para frente"${dis}${primeiroAg ? " disabled" : ""}>▲</button>
           <button class="btn mini sec seta-fila" data-a="descer" aria-label="Passar para trás"${dis}${ultimo ? " disabled" : ""}>▼</button>`}
         ${!p.pago && p.forma !== "prazo" ? `<button class="btn mini sec" data-a="pago"${dis}>Recebi</button>` : ""}
-        <button class="btn mini sec" data-a="remover"${dis}>Tirar</button>
+        <button class="btn mini sec" data-a="remover"${dis}>Remover</button>
       </div></div>`;
   }
 
@@ -114,7 +101,7 @@
     const S = A().S;
     try {
       if (acao === "bloquear" && !(await U.confirmar("Bloquear", "Recusar e bloquear este aparelho por 30 minutos? Ele não consegue fazer novos pedidos nesse tempo.", "Bloquear", true))) return;
-      if (acao === "remover" && !(await U.confirmar("Tirar da fila", "Tirar este cliente da fila / cancelar o agendamento?", "Tirar", true))) return;
+      if (acao === "remover" && !(await U.confirmar("Remover", "Remover este cliente da fila / cancelar o agendamento?", "Remover", true))) return;
       if (acao === "finalizar") {
         const p = dados.filas.flatMap((f) => f.fila).find((x) => x.id === id);
         if (p && !p.pago && p.forma !== "prazo" && !(await U.confirmar("Corte finalizado", `O pagamento de <b>${C.dinheiro(p.total)}</b> (${FORMAS[p.forma]}) ainda não foi marcado. Confirmar que recebeu e finalizar?`, "Recebi e finalizar"))) return;
@@ -148,7 +135,7 @@
       </div></section>`;
   }
   function ligarAvisos() {
-    const s = $("#som"); if (s) s.onchange = () => { try { localStorage.setItem("bs_som", s.checked ? "1" : "0"); } catch (e) { /* */ } if (s.checked) bip(); };
+    const s = $("#som"); if (s) s.onchange = () => { try { localStorage.setItem("bs_som", s.checked ? "1" : "0"); } catch (e) { /* */ } if (s.checked) U.bip(); };
     const bt = $("#ativar-push"); if (bt) bt.onclick = () => U.ocupado(bt, ativarPush);
   }
   const u8 = (b64) => Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((b64.length + 3) % 4)), (c) => c.charCodeAt(0));

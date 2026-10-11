@@ -170,7 +170,8 @@
     const pdf = new jsPDF({ unit: "mm", format: "a4" });
     const L = 210, centro = L / 2;
     pdf.setFillColor(29, 27, 24); pdf.rect(0, 0, L, 12, "F");
-    const logo = b.logo_url ? await imagemComoDataUrl(b.logo_url) : null;
+    let logo = b.logo_url ? await imagemComoDataUrl(b.logo_url) : null;
+    if (logo) logo = await new Promise((ok) => { const im = new Image(); im.onload = () => { try { ok(U.circular(im, 400)); } catch (e) { ok(logo); } }; im.onerror = () => ok(logo); im.src = logo; });
     let y = 22;
     if (logo) { try { pdf.addImage(logo, "PNG", centro - 22, y, 44, 44); y += 50; } catch (e) { /* segue sem logo */ } }
     pdf.setTextColor(29, 27, 24); pdf.setFont("helvetica", "bold"); pdf.setFontSize(24);
