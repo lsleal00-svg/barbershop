@@ -1,13 +1,19 @@
 .carregando-tela { min-height: 100vh; display: grid; place-items: center; }
 .carregando-tela::after { content: ""; width: 34px; height: 34px; border: 3px solid var(--linha); border-top-color: var(--tinta); border-radius: 50%; animation: gira .8s linear infinite; }
-.cabeca { position: sticky; top: 0; z-index: 10; background: var(--cartao); border-bottom: 1px solid var(--linha); }
-.cabeca .barra { display: flex; align-items: center; gap: .75rem; padding: .65rem 1rem; max-width: 900px; margin: 0 auto; }
-.cabeca img { width: 46px; height: 46px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); }
-.cabeca h1 { font-size: 1.1rem; margin: 0; flex: 1; }
-.corpo-cli { max-width: 900px; margin: 0 auto; padding: 1rem 1rem 4rem; }
-.capa { text-align: center; padding: 2rem 1rem; }
-.capa img { width: 150px; height: 150px; margin: 0 auto 1rem; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); box-shadow: var(--sombra); }
-.capa p { color: var(--suave); }
+.fixo { position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 10px rgba(0,0,0,.06); }
+.cabeca { background: var(--cartao); border-bottom: 1px solid var(--linha); }
+.cabeca .barra { display: flex; align-items: center; gap: .7rem; padding: .55rem 1rem .4rem; max-width: 900px; margin: 0 auto; }
+.cabeca img { width: 44px; height: 44px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); flex: none; }
+.cab-textos { flex: 1; min-width: 0; display: grid; gap: .15rem; justify-items: start; }
+.cabeca h1 { font-size: 1.05rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.busca-linha { max-width: 900px; margin: 0 auto; padding: 0 1rem .55rem; }
+.busca-linha input { min-height: 40px; padding: .45rem .8rem; border-radius: 999px; }
+.fixo .barra-cat { justify-content: flex-start; }
+@media (min-width: 900px) { .fixo .barra-cat { padding-left: calc((100vw - 900px) / 2 + .75rem); } }
+.corpo-cli { max-width: 900px; margin: 0 auto; padding: 1rem 1rem 4rem; display: grid; gap: 1rem; }
+.titulo-lista { margin: .25rem 0 .75rem; }
+.fila-cli h2 { margin-bottom: .3rem; }
 .indisponivel { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 2rem 1rem; }
 .indisponivel img { width: 120px; height: 120px; margin: 0 auto 1rem; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); filter: grayscale(1); opacity: .8; }
-.capa .btn { white-space: normal; max-width: 100%; }
+.cab-textos .status-pill { white-space: normal; line-height: 1.25; }
+.cabeca .barra .btn { flex: none; }
