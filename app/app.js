@@ -8,7 +8,9 @@
   const raiz = $("#raiz");
   const ALFABETO = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
   let perfil = null;          // resposta de meu_perfil()
-  let aba = "inicio";
+  let barb = null;            // linha completa da barbearia (configurações)
+  let aba = null;
+  let relogioStatus = null;
   let equipe = [];
 
   U.registrarSW("sw.js");
@@ -171,12 +173,58 @@
       U.aviso("Esta conta não está ligada a nenhuma barbearia.", "erro");
       return;
     }
+    try {
+      barb = (await S.rest(`barbearias?id=eq.${perfil.barbearia.id}&select=*`))[0] || perfil.barbearia;
+    } catch (err) { barb = perfil.barbearia; }
+    aplicarTema(barb);
     document.title = perfil.barbearia.nome + " — Painel";
+    if (!aba) aba = ehDono() ? "cardapio" : "inicio";
     desenharCasca();
   }
 
+  function aplicarTema(b) {
+    document.documentElement.dataset.tema = (b && b.tema) || "claro";
+    const raizCss = document.documentElement.style;
+    if (b && b.cor_barra) {
+      raizCss.setProperty("--cor-barra", b.cor_barra);
+      raizCss.setProperty("--cor-barra-texto", textoSobre(b.cor_barra));
+    } else { raizCss.removeProperty("--cor-barra"); raizCss.removeProperty("--cor-barra-texto"); }
+  }
+  function textoSobre(hex) {
+    const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, bl = n & 255;
+    return (0.299 * r + 0.587 * g + 0.114 * bl) > 160 ? "#1d1b18" : "#ffffff";
+  }
+
+  async function salvarBarbearia(muda) {
+    const r = await S.rest(`barbearias?id=eq.${barb.id}`, { method: "PATCH", prefer: "return=representation", body: muda });
+    if (!r || !r.length) throw new Error(leitura() ? "Plano vencido: o painel está só para consulta." : "Não foi possível salvar.");
+    barb = r[0];
+    aplicarTema(barb);
+    pintarStatus();
+    return barb;
+  }
+
+  function pintarStatus() {
+    const el = $("#status-topo");
+    if (!el || !barb || !window.HORARIO) return;
+    const st = HORARIO.situacao(barb);
+    el.className = "status-pill " + (st.aberto ? "aberto" : st.motivo === "almoco" ? "almoco" : "fechado");
+    el.textContent = window.innerWidth < 520 ? HORARIO.textoCurto(st) : HORARIO.texto(st);
+    el.title = HORARIO.texto(st);
+  }
+
+  async function pintarOnline() {
+    const el = $("#online-topo");
+    if (!el) return;
+    if (!barb || !barb.ver_movimentacao) { el.classList.add("oculto"); return; }
+    try {
+      const n = await S.rpc("pessoas_online");
+      el.textContent = `👁 ${n} no site agora`; el.classList.remove("oculto");
+    } catch (e) { el.classList.add("oculto"); }
+  }
+
   function abasDoPapel() {
-    if (ehDono()) return [["inicio", "Início"], ["equipe", "Equipe"], ["config", "Configurações"]];
+    if (ehDono()) return [["cardapio", "Cardápio"], ["horario", "Horário"], ["equipe", "Equipe"], ["pagamento", "Pagamento"], ["config", "Configurações"]];
     return [["inicio", "Início"], ["config", "Configurações"]];
   }
 
@@ -186,20 +234,25 @@
       ${leitura() ? `<div class="faixa-leitura">${b.ativo ? "Plano vencido" : "Acesso inativado"} — o painel está só para consulta. Fale com o suporte para renovar.</div>` : ""}
       <header class="topo-app"><div class="barra">
         <img class="logo" src="${esc(b.logo192_url || "icones/icone-192.png")}" alt="">
-        <div><div class="nome">${esc(b.nome)}</div><div class="papel">${esc(perfil.papel === "dono" ? NOME_PAPEL.dono : perfil.nome + " · " + NOME_PAPEL[perfil.papel])}</div></div>
+        <div class="topo-textos"><div class="nome">${esc(b.nome)}</div><div class="papel">${esc(perfil.papel === "dono" ? NOME_PAPEL.dono : perfil.nome + " · " + NOME_PAPEL[perfil.papel])}</div></div>
+        <div class="topo-direita"><span id="status-topo" class="status-pill"></span><span id="online-topo" class="online oculto"></span></div>
       </div>
       <nav class="abas" role="tablist">${abasDoPapel().map(([id, t]) => `<button role="tab" data-aba="${id}" aria-selected="${id === aba}">${t}</button>`).join("")}</nav>
       </header>
       <main class="corpo-app" id="corpo"></main>`;
     $$(".abas button").forEach((bt) => (bt.onclick = () => { aba = bt.dataset.aba; desenharCasca(); }));
-    if (!abasDoPapel().some(([id]) => id === aba)) aba = "inicio";
-    ({ inicio: telaInicio, equipe: telaEquipeDono, config: telaConfig })[aba]();
+    if (!abasDoPapel().some(([id]) => id === aba)) aba = abasDoPapel()[0][0];
+    pintarStatus(); pintarOnline();
+    clearInterval(relogioStatus);
+    relogioStatus = setInterval(() => { pintarStatus(); pintarOnline(); }, 30000);
+    const telas = Object.assign({ inicio: telaInicio, equipe: telaEquipeDono, config: telaConfig }, window.APP_ABAS || {});
+    telas[aba]($("#corpo"));
   }
 
   function telaInicio() {
     const b = perfil.barbearia;
     const proximos = ehDono()
-      ? ["Cardápio: categorias, cortes, barba e produtos (Fase 2)", "Horário de funcionamento, temas e status aberto/fechado (Fase 2)", "Fila, agendamentos, pedidos e pagamento (Fase 3)", "Caixa, gráficos e relatórios (Fase 4)"]
+      ? ["Fila, agendamentos, pedidos e pagamento (Fase 3)", "Caixa, gráficos e relatórios (Fase 4)"]
       : perfil.papel === "associado" ? ["Sua fila e os pedidos dos clientes aparecem aqui (Fase 3)"]
       : ["Aprovar pedidos e organizar a fila (Fase 3)", "Caixa e relatórios (Fase 4)"];
     const d = U.diasAte(b.expira_em);
@@ -368,6 +421,7 @@
   function telaConfig() {
     const b = perfil.barbearia, link = linkCliente();
     $("#corpo").innerHTML = `
+      ${ehDono() ? blocoConfigDono() : ""}
       <section class="cartao" id="cfg-cliente"><h2>Link do cliente</h2>
         <p class="pequeno suave">Seus clientes abrem este link ou leem o QR Code para ver cortes, produtos e a fila — e podem instalar o app da <b>${esc(b.nome)}</b> no celular ou no computador, com o seu logo.</p>
         <div id="qr-cliente">${U.qrSvg(link, 220)}</div>
@@ -397,8 +451,58 @@
       if (b.logo192_url) img.src = b.logo192_url; else fim();
     };
     ligarInstalar();
-    $("#sair").onclick = async () => { await S.sair(); perfil = null; aba = "inicio"; telaLogin(); };
+    if (ehDono()) ligarConfigDono();
+    $("#sair").onclick = async () => { await S.sair(); perfil = null; barb = null; aba = null; clearInterval(relogioStatus); document.documentElement.dataset.tema = "claro"; telaLogin(); };
     if ($("#trocar-senha")) $("#trocar-senha").onclick = trocarSenha;
+  }
+
+  const TEMAS = [["claro", "Claro", "#f7f4ee", "#1d1b18"], ["escuro", "Escuro", "#141311", "#c9a96a"], ["vermelho", "Vermelho", "#fbf3f1", "#b8322a"], ["verde", "Verde", "#f2f7f3", "#2f6e47"], ["amarelo", "Amarelo", "#fdf8ea", "#d9a521"]];
+
+  function blocoConfigDono() {
+    const st = HORARIO.situacao(barb), tem = HORARIO.temHorario(barb.horarios);
+    const prox = tem ? HORARIO.proximaMudanca(barb.horarios, barb.fuso) : null;
+    return `<section class="cartao" id="cfg-status"><h2>Status da barbearia</h2>
+        <p><span class="status-pill ${st.aberto ? "aberto" : st.motivo === "almoco" ? "almoco" : "fechado"}">${esc(HORARIO.texto(st))}</span></p>
+        <p class="pequeno suave">${st.manual
+          ? (st.ate ? `Você mudou manualmente. Volta ao automático em <b>${st.ate.toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}</b>.` : "Você mudou manualmente. Fica assim até você mudar de novo.")
+          : tem ? "Seguindo o horário de funcionamento." : "Sem horário cadastrado: fica assim até você mudar."}</p>
+        <div class="linha-acoes">
+          <button class="btn${st.aberto ? " sec" : ""}" id="st-abrir"${leitura() ? " disabled" : ""}>Abrir agora</button>
+          <button class="btn${st.aberto ? "" : " sec"}" id="st-fechar"${leitura() ? " disabled" : ""}>Fechar agora</button>
+          ${st.manual && tem ? `<button class="btn sec" id="st-auto"${leitura() ? " disabled" : ""}>Voltar ao automático</button>` : ""}
+        </div>
+        ${!st.manual && tem && prox ? `<p class="pequeno suave" style="margin-top:.6rem">Se mudar agora, volta ao automático em ${prox.toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}.</p>` : ""}
+      </section>
+      <div class="grade-2" style="margin:1rem 0">
+        <section class="cartao"><h2>Tema</h2>
+          <div class="temas">${TEMAS.map(([id, nome, f, d]) => `<button class="tema-op" data-tema="${id}" aria-pressed="${barb.tema === id}"${leitura() ? " disabled" : ""}>
+            <span class="amostra" style="background:${f};border-color:${d}"><i style="background:${d}"></i></span>${nome}</button>`).join("")}</div></section>
+        <section class="cartao"><h2>Ver movimentação</h2>
+          <label class="linha-check"><input type="checkbox" id="cfg-mov"${barb.ver_movimentacao ? " checked" : ""}${leitura() ? " disabled" : ""}> Mostrar quantas pessoas estão no site agora</label>
+          <p class="pequeno suave" style="margin-top:.5rem">O número aparece no topo do painel e se atualiza a cada 30 segundos.</p></section>
+      </div>`;
+  }
+
+  function ligarConfigDono() {
+    const mudarStatus = async (status) => {
+      try {
+        const prox = HORARIO.proximaMudanca(barb.horarios, barb.fuso);
+        await salvarBarbearia({ status_manual: status, status_ate: status && prox ? prox.toISOString() : null });
+        U.aviso(status ? (status === "aberto" ? "Barbearia aberta." : "Barbearia fechada.") : "Seguindo o horário de novo.");
+        telaConfig();
+      } catch (err) { U.aviso(err.message, "erro"); }
+    };
+    $("#st-abrir").onclick = () => mudarStatus("aberto");
+    $("#st-fechar").onclick = () => mudarStatus("fechado");
+    if ($("#st-auto")) $("#st-auto").onclick = () => mudarStatus(null);
+    $$(".tema-op").forEach((bt) => (bt.onclick = async () => {
+      try { await salvarBarbearia({ tema: bt.dataset.tema }); telaConfig(); U.aviso("Tema aplicado no painel e no site dos clientes."); }
+      catch (err) { U.aviso(err.message, "erro"); }
+    }));
+    $("#cfg-mov").onchange = async (e) => {
+      try { await salvarBarbearia({ ver_movimentacao: e.target.checked }); pintarOnline(); }
+      catch (err) { e.target.checked = !e.target.checked; U.aviso(err.message, "erro"); }
+    };
   }
 
   async function trocarSenha() {
@@ -414,6 +518,17 @@
       } },
     ]);
   }
+
+  /* =================== peças para os outros arquivos do painel =================== */
+  window.APP = {
+    S, esc,
+    perfil: () => perfil,
+    b: () => barb,
+    leitura, ehDono,
+    salvarBarbearia,
+    redesenhar: () => desenharCasca(),
+    linkCliente,
+  };
 
   /* =================== início =================== */
   if (S.sessao()) abrir(); else telaLogin();
