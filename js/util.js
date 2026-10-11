@@ -26,6 +26,29 @@
     setTimeout(() => { el.classList.add("saindo"); setTimeout(() => el.remove(), 300); }, tipo === "erro" ? 5000 : 2800);
   };
 
+  /* Ícones desenhados (traço 2, mesmo estilo em todo o sistema). */
+  const ICONES = {
+    tesoura: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/>',
+    sacola: '<path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+    lista: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5h6M9 10h6M9 14h6M9 18h3"/>',
+    baixar: '<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',
+    sair: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4"/>',
+    esquerda: '<path d="m15 6-6 6 6 6"/>',
+    direita: '<path d="m9 6 6 6-6 6"/>',
+    estrela: '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z"/>',
+    estrelaCheia: '<path fill="currentColor" d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5Z"/>',
+    sino: '<path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+    rolar: '<path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4"/>',
+  };
+  U.icone = (nome) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[nome] || ""}</svg>`;
+
+  /* Barra do navegador/celular na cor do topo do tema. */
+  U.corDaBarra = function () {
+    const m = document.querySelector('meta[name="theme-color"]');
+    const cor = getComputedStyle(document.documentElement).getPropertyValue("--casca").trim();
+    if (m && cor) m.setAttribute("content", cor);
+  };
+
   U.modal = function (titulo, corpoHtml, botoes) {
     return new Promise((resolve) => {
       const fundo = document.createElement("div");
