@@ -70,7 +70,7 @@ body.com-barra .corpo-cli { padding-bottom: 6.5rem; }
 .fila-cartao, .fila-barbeiro { min-width: 0; }
 
 /* logos sempre redondos, preenchendo o círculo */
-.cabeca img, .indisponivel img { object-fit: cover; border-radius: 50%; }
+.cabeca img, .indisponivel img { object-fit: cover; border-radius: 50%;  border: 0; box-shadow: 0 1px 5px rgba(0,0,0,.18); }
 /* fila: até 2 barbeiros à vista; com mais, rolagem vertical */
 .fila-lista.rolando { overflow-y: auto; overscroll-behavior: contain; padding-right: .35rem; scrollbar-width: thin; }
 .fila-lista.rolando::-webkit-scrollbar { width: 8px; }
