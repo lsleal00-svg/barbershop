@@ -99,7 +99,7 @@
     $("#n-logo").onchange = async (e) => {
       try {
         const img = await U.lerImagem(e.target.files[0]);
-        logoNovo = { l512: U.quadrado(img, 512), l192: U.quadrado(img, 192) };
+        logoNovo = { l512: U.logoRedondo(img, 512), l192: U.logoRedondo(img, 192) };
         const p = $("#n-previa"); p.textContent = ""; p.style.backgroundImage = `url(${logoNovo.l192})`;
       } catch (err) { logoNovo = null; e.target.value = ""; U.aviso(err.message, "erro"); }
     };
@@ -246,7 +246,8 @@
       <div class="campo"><label for="e-email">E-mail de acesso</label><input id="e-email" type="email" value="${esc(b.email)}"></div>
       <div class="campo"><label for="e-logo">Trocar logo (opcional)</label>
         <div class="logo-escolha"><div class="logo-previa" id="e-previa" style="background-image:url('${esc(b.logo192_url || "")}')"></div>
-        <input id="e-logo" type="file" accept="image/png,image/jpeg,image/webp"></div></div>`, [
+        <input id="e-logo" type="file" accept="image/png,image/jpeg,image/webp"></div>
+        ${b.logo_url ? `<button class="btn sec pequeno" id="e-arredondar" type="button" style="margin-top:.5rem">◯ Deixar o logo atual redondo</button>` : ""}</div>`, [
       { rotulo: "Cancelar", classe: "sec", valor: false },
       { rotulo: "Salvar", antes: async (m) => {
         const corpo = { acao: "editar", id: b.id, nome: $("#e-nome", m).value, email: $("#e-email", m).value };
@@ -255,10 +256,23 @@
         trocar(nova); U.aviso("Alterações salvas.");
       } },
     ]);
+    const arred = $("#e-arredondar");
+    if (arred) arred.onclick = () => {
+      const img = new Image(); img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          logo = { l512: U.logoRedondo(img, 512), l192: U.logoRedondo(img, 192) };
+          $("#e-previa").style.backgroundImage = `url(${logo.l192})`;
+          arred.textContent = "✓ Pronto — toque em Salvar"; arred.disabled = true;
+        } catch (err) { U.aviso("Não foi possível ler o logo atual. Escolha o arquivo do logo de novo.", "erro"); }
+      };
+      img.onerror = () => U.aviso("Não foi possível abrir o logo atual. Escolha o arquivo do logo de novo.", "erro");
+      img.src = b.logo_url;
+    };
     $("#e-logo").onchange = async (e) => {
       try {
         const img = await U.lerImagem(e.target.files[0]);
-        logo = { l512: U.quadrado(img, 512), l192: U.quadrado(img, 192) };
+        logo = { l512: U.logoRedondo(img, 512), l192: U.logoRedondo(img, 192) };
         $("#e-previa").style.backgroundImage = `url(${logo.l192})`;
       } catch (err) { logo = null; U.aviso(err.message, "erro"); }
     };
