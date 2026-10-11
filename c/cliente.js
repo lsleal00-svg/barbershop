@@ -122,7 +122,7 @@
     } else {
       $$("#cats .chip").forEach((ch) => ch.setAttribute("aria-pressed", String(ch.dataset.cat === atual)));
       const cat = cats.find((c) => c.id === atual);
-      if (!cat) { alvo.innerHTML = `<div class="vazio-cardapio">O cardápio ainda está sendo montado.</div>`; return; }
+      if (!cat) { alvo.innerHTML = `<div class="vazio-cardapio">Os serviços e produtos ainda estão sendo cadastrados.</div>`; return; }
       lista = visiveis().filter((i) => i.categoria_id === cat.id);
       titulo = `${cat.icone ? esc(cat.icone) + " " : ""}${esc(cat.nome)}`;
     }
@@ -145,7 +145,8 @@
       return;
     }
     const ab = aberta();
-    alvo.innerHTML = `<div class="cartao fila-cartao"><h2>Fila online</h2>${barbeiros.map((br, i) => {
+    const topoAntes = $(".fila-lista", alvo) ? $(".fila-lista", alvo).scrollTop : 0;
+    alvo.innerHTML = `<div class="cartao fila-cartao"><h2>Fila online</h2><div class="fila-lista">${barbeiros.map((br, i) => {
       const fila = br.fila || [];
       let n = 0;
       return `<div class="fila-barbeiro" data-i="${i}">
@@ -165,11 +166,22 @@
         </div>
         ${br.agendados_hoje && br.agendados_hoje.length ? `<p class="pequeno suave agendados-hoje">Agendados hoje: ${br.agendados_hoje.map(esc).join(", ")}</p>` : ""}
       </div>`;
-    }).join("")}${!ab ? `<p class="pequeno suave">A barbearia está fechada agora, mas você pode agendar.</p>` : ""}</div>`;
+    }).join("")}</div>${barbeiros.length > 2 ? `<p class="pequeno suave dica-rolar">↕ Role para ver os outros barbeiros (${barbeiros.length}).</p>` : ""}${!ab ? `<p class="pequeno suave">A barbearia está fechada agora, mas você pode agendar.</p>` : ""}</div>`;
+    limitarFila(alvo, topoAntes);
     $$("#fila [data-a]").forEach((bt) => (bt.onclick = () => {
       const br = barbeiros[Number(bt.closest(".fila-barbeiro").dataset.i)];
       escolherServicos(br, bt.dataset.a === "agendar" ? "agendar" : "agora");
     }));
+  }
+
+  /* Até 2 barbeiros à vista; com 3 ou mais, a lista ganha rolagem vertical. */
+  function limitarFila(alvo, topo) {
+    const lista = $(".fila-lista", alvo);
+    const blocos = $$(".fila-barbeiro", lista);
+    if (blocos.length <= 2) { lista.classList.remove("rolando"); lista.style.maxHeight = ""; return; }
+    lista.classList.add("rolando");
+    lista.style.maxHeight = (blocos[0].offsetHeight + blocos[1].offsetHeight + 2) + "px";
+    lista.scrollTop = topo || 0;
   }
 
   /* ---------- serviços e carrinho ---------- */
@@ -241,7 +253,7 @@
     const desenhar = () => {
       if (!servicos.length) { j.fechar(); desenharBarra(); return; }
       const total = servicos.reduce((s, it) => s + C.final(it), 0);
-      j.mostrar("Serviços solicitados", servicos.map((it) => linhaItem(it, `<button class="btn mini sec" data-tirar="${it.id}">Tirar</button>`)).join("") +
+      j.mostrar("Serviços solicitados", servicos.map((it) => linhaItem(it, `<button class="btn mini sec" data-tirar="${it.id}">Remover</button>`)).join("") +
         `<p class="total-linha">Total: <b>${C.dinheiro(total)}</b></p><p class="pequeno suave">Você pode escolher um corte de cabelo e uma barba.</p>`, [
         { rotulo: "Adicionar um novo serviço", classe: "sec", acao: () => { j.fechar(); irParaServicos(); } },
         { rotulo: "Finalizar", acao: () => { j.fechar(); assistente({ tipo: "servico", itens: servicos.slice() }); } },
