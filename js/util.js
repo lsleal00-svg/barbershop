@@ -36,7 +36,7 @@
         <div class="modal-rodape"></div></div>`;
       const rod = U.$(".modal-rodape", fundo);
       const fechar = (v) => { fundo.remove(); document.removeEventListener("keydown", tecla); resolve(v); };
-      const tecla = (e) => { if (e.key === "Escape") fechar(null); };
+      const tecla = (e) => { if (e.key === "Escape" && fundo === [...document.querySelectorAll(".modal-fundo")].pop()) fechar(null); };
       (botoes || [{ rotulo: "Fechar", valor: null }]).forEach((b) => {
         const el = document.createElement("button");
         el.className = "btn " + (b.classe || "");
@@ -217,6 +217,113 @@
     g.lineWidth = aro; g.strokeStyle = "#1d1b18";
     g.beginPath(); g.arc(r, r, r - aro / 2, 0, Math.PI * 2); g.stroke();
     return cv.toDataURL("image/png");
+  };
+  /* Recorte redondo como no WhatsApp: a imagem fica de fundo, o círculo marca o corte.
+     Arraste para posicionar; aproxime com o controle, a roda do mouse ou dois dedos.
+     Devolve uma função gerar(lado) -> PNG redondo (cantos transparentes), ou null se cancelar. */
+  U.corDaBorda = function (img) {
+    try {
+      const cv = document.createElement("canvas"); cv.width = cv.height = 32;
+      const g = cv.getContext("2d"); g.drawImage(img, 0, 0, 32, 32);
+      const d = g.getImageData(0, 0, 32, 32).data; let r = 0, gg = 0, b = 0, n = 0;
+      for (let i = 0; i < 32; i++) for (const [x, y] of [[i, 0], [i, 31], [0, i], [31, i]]) {
+        const k = (y * 32 + x) * 4; if (d[k + 3] < 128) { r += 255; gg += 255; b += 255; } else { r += d[k]; gg += d[k + 1]; b += d[k + 2]; } n++;
+      }
+      return `rgb(${Math.round(r / n)},${Math.round(gg / n)},${Math.round(b / n)})`;
+    } catch (e) { return "#ffffff"; }
+  };
+  U.recortarCirculo = function (img, titulo) {
+    const W = img.naturalWidth, H = img.naturalHeight;
+    let fundoCor = U.corDaBorda(img);
+    let gerar = null;
+    const espera = U.modal(titulo || "Ajustar o logo", `
+      <p class="sub" style="margin:0 0 .6rem">Arraste a imagem para posicionar dentro do círculo. Use o controle abaixo (ou dois dedos) para aproximar.</p>
+      <div class="recorte"><canvas aria-label="Área de recorte"></canvas></div>
+      <div class="recorte-zoom"><span aria-hidden="true">−</span><input type="range" min="0" max="1000" value="0" aria-label="Aproximar"><span aria-hidden="true">+</span></div>
+      <div class="recorte-fundo"><span>Fundo:</span>
+        <button type="button" class="chip-cor" data-cor="auto" aria-pressed="true" title="Cor da borda da imagem"></button>
+        <button type="button" class="chip-cor" data-cor="#ffffff" aria-pressed="false" style="background:#fff" title="Branco"></button>
+        <button type="button" class="chip-cor" data-cor="#111111" aria-pressed="false" style="background:#111" title="Preto"></button>
+      </div>`, [
+      { rotulo: "Cancelar", classe: "sec", valor: false },
+      { rotulo: "Usar este recorte", valor: true },
+    ]);
+    const fundo = [...document.querySelectorAll(".modal-fundo")].pop();
+    const caixa = U.$(".recorte", fundo), cv = U.$("canvas", caixa), g = cv.getContext("2d");
+    const zoom = U.$(".recorte-zoom input", fundo);
+    const auto = fundoCor;
+    U.$('.chip-cor[data-cor="auto"]', fundo).style.background = auto;
+    let L = 300, D = 270, s = 1, sMin = 1, sMax = 4, cx = 150, cy = 150;
+    const raio = () => D / 2;
+    function limitar() {
+      const w = W * s, h = H * s, c0 = (L - D) / 2, c1 = c0 + D;
+      cx = w >= D ? Math.min(c0 + w / 2, Math.max(c1 - w / 2, cx)) : Math.max(c0 + w / 2, Math.min(c1 - w / 2, cx));
+      cy = h >= D ? Math.min(c0 + h / 2, Math.max(c1 - h / 2, cy)) : Math.max(c0 + h / 2, Math.min(c1 - h / 2, cy));
+    }
+    function desenhar() {
+      const k = cv.width / L;
+      g.setTransform(k, 0, 0, k, 0, 0);
+      g.fillStyle = "#1b1b1b"; g.fillRect(0, 0, L, L);
+      g.fillStyle = fundoCor; g.beginPath(); g.arc(L / 2, L / 2, raio(), 0, Math.PI * 2); g.fill();
+      g.imageSmoothingQuality = "high";
+      g.drawImage(img, cx - W * s / 2, cy - H * s / 2, W * s, H * s);
+      g.fillStyle = "rgba(0,0,0,.58)"; g.beginPath(); g.rect(0, 0, L, L); g.arc(L / 2, L / 2, raio(), 0, Math.PI * 2, true); g.fill("evenodd");
+      g.strokeStyle = "rgba(255,255,255,.9)"; g.lineWidth = 2; g.beginPath(); g.arc(L / 2, L / 2, raio(), 0, Math.PI * 2); g.stroke();
+    }
+    const deSlider = () => sMin * Math.pow(sMax / sMin, zoom.value / 1000);
+    const paraSlider = () => { zoom.value = Math.round(1000 * Math.log(s / sMin) / Math.log(sMax / sMin)); };
+    function escalar(novo, px, py) {
+      novo = Math.max(sMin, Math.min(sMax, novo));
+      px = px == null ? L / 2 : px; py = py == null ? L / 2 : py;
+      cx = px + (cx - px) * novo / s; cy = py + (cy - py) * novo / s; s = novo;
+      limitar(); paraSlider(); desenhar();
+    }
+    function medir() {
+      L = Math.max(200, Math.round(caixa.clientWidth || 300)); D = L * 0.9;
+      const dpr = Math.min(3, window.devicePixelRatio || 1);
+      cv.width = cv.height = Math.round(L * dpr); cv.style.width = cv.style.height = L + "px";
+    }
+    medir();
+    const cobre = D / Math.min(W, H);             // a imagem preenche o círculo
+    sMin = D / Math.max(W, H);                    // a imagem inteira cabe no círculo
+    sMax = Math.max(cobre * 4, sMin * 4);
+    s = cobre; cx = cy = L / 2; limitar(); paraSlider(); desenhar();
+    zoom.oninput = () => escalar(deSlider());
+    // arrastar e pinçar
+    const toques = new Map(); let pinca = null;
+    const pos = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * L / r.width, (e.clientY - r.top) * L / r.height]; };
+    cv.addEventListener("pointerdown", (e) => { cv.setPointerCapture(e.pointerId); toques.set(e.pointerId, pos(e)); pinca = null; });
+    cv.addEventListener("pointermove", (e) => {
+      if (!toques.has(e.pointerId)) return;
+      const antes = toques.get(e.pointerId), agora = pos(e); toques.set(e.pointerId, agora);
+      if (toques.size === 1) { cx += agora[0] - antes[0]; cy += agora[1] - antes[1]; limitar(); desenhar(); }
+      else if (toques.size === 2) {
+        const [a, b] = [...toques.values()], dist = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        if (pinca) escalar(s * dist / pinca, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+        pinca = dist;
+      }
+    });
+    const solta = (e) => { toques.delete(e.pointerId); pinca = null; };
+    cv.addEventListener("pointerup", solta); cv.addEventListener("pointercancel", solta);
+    cv.addEventListener("wheel", (e) => { e.preventDefault(); const [x, y] = pos(e); escalar(s * Math.exp(-e.deltaY / 400), x, y); }, { passive: false });
+    U.$$(".chip-cor", fundo).forEach((bt) => bt.onclick = () => {
+      U.$$(".chip-cor", fundo).forEach((o) => o.setAttribute("aria-pressed", String(o === bt)));
+      fundoCor = bt.dataset.cor === "auto" ? auto : bt.dataset.cor; desenhar();
+    });
+    return espera.then((ok) => {
+      if (!ok) return null;
+      const c0 = (L - D) / 2, cor = fundoCor, S0 = s, X = cx, Y = cy;
+      gerar = (lado) => {
+        const out = document.createElement("canvas"); out.width = out.height = lado;
+        const o = out.getContext("2d"), f = lado / D;
+        o.beginPath(); o.arc(lado / 2, lado / 2, lado / 2, 0, Math.PI * 2); o.closePath(); o.clip();
+        o.fillStyle = cor; o.fillRect(0, 0, lado, lado);
+        o.imageSmoothingQuality = "high";
+        o.drawImage(img, (X - W * S0 / 2 - c0) * f, (Y - H * S0 / 2 - c0) * f, W * S0 * f, H * S0 * f);
+        return out.toDataURL("image/png");
+      };
+      return gerar;
+    });
   };
   U.recorteQuadrado = function (img, lado) {   // foto de perfil: corta o centro
     const cv = document.createElement("canvas"); cv.width = cv.height = lado;
