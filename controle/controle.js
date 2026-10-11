@@ -56,7 +56,7 @@
       </form></div></main>`;
     $("#f-login").onsubmit = async (e) => {
       e.preventDefault();
-      const btn = $("#f-login button");
+      const btn = $("#f-login button[type=submit]");
       await U.ocupado(btn, async () => {
         try {
           await S.entrar($("#email").value, $("#senha").value, $("#manter").checked);
@@ -201,7 +201,7 @@
   function baixarQr(b, link) {
     return new Promise((ok) => {
       const img = new Image(); img.crossOrigin = "anonymous";
-      const fim = () => { const png = U.qrPng(link, b.nome, img.naturalWidth ? img : null) || U.qrPng(link, b.nome); U.baixar(png, `qrcode-${b.slug}.png`); ok(); };
+      const fim = () => { const png = U.qrPng(link, b.nome, img.naturalWidth ? img : null, U.FRASE_QR) || U.qrPng(link, b.nome, null, U.FRASE_QR); U.baixar(png, `qrcode-${b.slug}.png`); ok(); };
       img.onload = fim; img.onerror = () => { img.removeAttribute("src"); fim(); };
       img.src = b.logo192_url || "";
       if (!b.logo192_url) fim();
