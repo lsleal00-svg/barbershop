@@ -201,6 +201,23 @@
     g.drawImage(img, (lado - w) / 2, (lado - h) / 2, w, h);
     return cv.toDataURL(tipo || "image/png", qualidade);
   };
+  /* Logo redondo: disco branco com o logo inteiro dentro, aro escuro fino e cantos transparentes.
+     Assim o logo fica redondo em qualquer lugar: telas, ícone do app instalado, QR Code e PDF. */
+  U.logoRedondo = function (img, lado) {
+    const cv = document.createElement("canvas"); cv.width = cv.height = lado;
+    const g = cv.getContext("2d"), r = lado / 2;
+    g.beginPath(); g.arc(r, r, r, 0, Math.PI * 2); g.closePath(); g.clip();
+    g.fillStyle = "#fff"; g.fillRect(0, 0, lado, lado);
+    const caixa = lado * 0.80;
+    const esc = Math.min(caixa / img.naturalWidth, caixa / img.naturalHeight);
+    const w = img.naturalWidth * esc, h = img.naturalHeight * esc;
+    g.imageSmoothingQuality = "high";
+    g.drawImage(img, (lado - w) / 2, (lado - h) / 2, w, h);
+    const aro = Math.max(2, lado * 0.02);
+    g.lineWidth = aro; g.strokeStyle = "#1d1b18";
+    g.beginPath(); g.arc(r, r, r - aro / 2, 0, Math.PI * 2); g.stroke();
+    return cv.toDataURL("image/png");
+  };
   U.recorteQuadrado = function (img, lado) {   // foto de perfil: corta o centro
     const cv = document.createElement("canvas"); cv.width = cv.height = lado;
     const g = cv.getContext("2d");
