@@ -125,3 +125,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ouro); outl
 .ver-senha { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border: 0; background: none; color: var(--suave); cursor: pointer; display: grid; place-items: center; border-radius: 8px; }
 .ver-senha:hover, .ver-senha.ativo { color: var(--destaque); }
 .ver-senha svg { width: 22px; height: 22px; }
+
+/* recorte redondo do logo (como no WhatsApp) */
+.recorte { width: min(340px, 100%); margin: 0 auto; border-radius: 12px; overflow: hidden; background: #1b1b1b; aspect-ratio: 1; }
+.recorte canvas { display: block; touch-action: none; cursor: grab; }
+.recorte canvas:active { cursor: grabbing; }
+.recorte-zoom { display: flex; align-items: center; gap: .6rem; width: min(340px, 100%); margin: .8rem auto 0; font-weight: 800; font-size: 1.2rem; color: var(--suave); }
+.recorte-zoom input { flex: 1; min-height: 0; padding: 0; accent-color: var(--destaque); }
+.recorte-fundo { display: flex; align-items: center; justify-content: center; gap: .5rem; margin-top: .7rem; font-size: .9rem; color: var(--suave); }
+.chip-cor { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--linha); cursor: pointer; padding: 0; }
+.chip-cor[aria-pressed="true"] { outline: 3px solid var(--ouro); outline-offset: 2px; }
