@@ -1,10 +1,10 @@
 /* Service worker do app do barbeiro: abre rápido e mostra a tela mesmo sem internet.
    Mude VERSAO a cada atualização publicada para os celulares baixarem a nova. */
-const VERSAO = "painel-v3";
+const VERSAO = "painel-v4";
 const ARQUIVOS = [
   "./", "./index.html", "./app.css", "./app.js", "./manifest.webmanifest",
   "./icones/icone-192.png", "./icones/icone-512.png", "./icones/icone-180.png", "./icones/icone-32.png",
-  "../css/cardapio.css", "../js/horario.js", "../js/pix.js", "../js/cardapio.js", "../vendor/jspdf.umd.min.js", "./cardapio-admin.js", "./horario-admin.js", "./pagamento.js", "./fila.js", "../css/base.css", "../js/supa.js", "../js/util.js", "../vendor/qrcode.js", "../config.js",
+  "../css/cardapio.css", "../js/horario.js", "../js/pix.js", "../js/cardapio.js", "../vendor/jspdf.umd.min.js", "./cardapio-admin.js", "./horario-admin.js", "./pagamento.js", "./fila.js", "./caixa.js", "../css/base.css", "../js/supa.js", "../js/util.js", "../vendor/qrcode.js", "../config.js",
 ];
 
 self.addEventListener("install", (e) => {

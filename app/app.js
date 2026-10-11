@@ -224,7 +224,8 @@
   }
 
   function abasDoPapel() {
-    if (ehDono()) return [["fila", "Fila"], ["cardapio", "Cardápio"], ["horario", "Horário"], ["equipe", "Equipe"], ["pagamento", "Pagamento"], ["config", "Configurações"]];
+    if (ehDono()) return [["fila", "Fila"], ["caixa", "Caixa"], ["cardapio", "Cardápio"], ["horario", "Horário"], ["equipe", "Equipe"], ["pagamento", "Pagamento"], ["config", "Configurações"]];
+    if (perfil.papel === "caixa") return [["fila", "Fila"], ["caixa", "Caixa"], ["config", "Configurações"]];
     return [["fila", "Fila"], ["config", "Configurações"]];
   }
 
