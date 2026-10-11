@@ -163,6 +163,6 @@
 @media (min-width: 760px) { .devedor { grid-template-columns: 1fr auto; align-items: center; } }
 
 /* logos sempre redondos, preenchendo o círculo */
-.topo-app .logo, .boas-vindas img, .entrada .marca { object-fit: cover; border-radius: 50%; }
+.topo-app .logo, .boas-vindas img, .entrada .marca { object-fit: cover; border-radius: 50%;  border: 0; box-shadow: 0 1px 5px rgba(0,0,0,.18); }
 .icones { max-height: 230px; overflow-y: auto; padding: 2px; }
 .sair-topo { flex: none; }
