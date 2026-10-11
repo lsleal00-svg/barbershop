@@ -1,8 +1,8 @@
 /* Service worker do app do cliente (todas as barbearias usam o mesmo arquivo).
    Mude VERSAO a cada atualização publicada. */
-const VERSAO = "cliente-v2";
+const VERSAO = "cliente-v3";
 const ARQUIVOS = ["./", "./index.html", "./cliente.css", "./cliente.js",
-  "../css/cardapio.css", "../js/horario.js", "../js/cardapio.js", "../css/base.css", "../js/supa.js", "../js/util.js", "../config.js"];
+  "../css/cardapio.css", "../js/horario.js", "../js/cardapio.js", "../js/pix.js", "../vendor/qrcode.js", "../css/base.css", "../js/supa.js", "../js/util.js", "../config.js"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
