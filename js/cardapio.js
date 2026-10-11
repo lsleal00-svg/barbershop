@@ -6,7 +6,16 @@
 
   C.TIPOS = { cabelo: "Corte de cabelo", barba: "Barba", outros: "Outros (produtos)" };
   C.NOVO = { cabelo: "Adicionar novo corte", barba: "Adicionar novo corte de barba", outros: "Adicionar novo produto" };
-  C.ICONES = ["✂️", "💈", "🪒", "🧔", "💇‍♂️", "👨‍🦲", "🧴", "🧼", "🪮", "🧢", "👕", "🕶️", "⌚", "🎱", "🥤", "☕", "🍺", "🍫", "🎁", "⭐", "🔥", "💎", "🏷️", "🛍️"];
+  C.ICONES = [
+    // cortes, barba e cuidados
+    "✂️", "💈", "🪒", "🧔", "🧔‍♂️", "👨", "👦", "👶", "👴", "💇‍♂️", "💇", "💆‍♂️", "👨‍🦲", "👨‍🦱", "👨‍🦰", "👱‍♂️", "🪮", "🧴", "🧼", "🫧", "💦", "🔥", "❄️", "🌿", "🎨", "🖌️", "✨", "💎",
+    // roupas e acessórios
+    "🧢", "👕", "👔", "🧥", "🩳", "👖", "🧦", "👟", "🕶️", "⌚", "💍", "🎒", "👜", "🧣",
+    // bebidas e lanches
+    "🥤", "🧃", "☕", "🍺", "🍻", "🥃", "🍷", "💧", "🍫", "🍬", "🍪", "🍿", "🍔", "🍕",
+    // lazer e outros
+    "🎱", "🎮", "🃏", "⚽", "🏀", "🎵", "📱", "🔌", "🎁", "🏷️", "🛍️", "⭐", "👑", "💯", "❤️", "🔝", "🆕", "💲",
+  ];
   C.CORES = ["#1d1b18", "#a88a4f", "#b8322a", "#2f6e47", "#1f4e8c", "#6b3fa0", "#d9a521", "#e0567a", "#0f7c80", "#5b5b5b"];
 
   C.dinheiro = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
