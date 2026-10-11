@@ -64,7 +64,7 @@
   function acoesItem(it) {
     return `<button class="btn sec" data-a="editar"${dis()}>Editar</button>
       <button class="btn sec" data-a="desconto"${dis()}>${it.desconto ? `-${it.desconto}%` : "Desconto"}</button>
-      <button class="btn sec" data-a="destaque"${dis()} title="${it.destaque ? "Remover do destaque" : "Inserir na lista de destaque"}">${it.destaque ? "★ Remover destaque" : "☆ Destacar"}</button>
+      <button class="btn sec" data-a="destaque"${dis()} title="${it.destaque ? "Remover do destaque" : "Inserir na lista de destaque"}">${it.destaque ? U.icone("estrelaCheia") + "Remover destaque" : U.icone("estrela") + "Destacar"}</button>
       <button class="btn sec" data-a="esgotado"${dis()}>${it.esgotado ? "Disponível" : "Esgotado"}</button>
       <button class="btn perigo" data-a="excluir"${dis()} aria-label="Excluir">Excluir</button>`;
   }

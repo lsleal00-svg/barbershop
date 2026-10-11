@@ -36,7 +36,7 @@
       ${corpo}</div></main>`;
     if (voltar) $("#voltar").onclick = telaLogin;
   }
-  const botaoInstalar = () => (U.instalado() ? "" : `<button class="btn sec bloco instalar-fixo" id="instalar" type="button">📲 Instalar o app no celular</button>`);
+  const botaoInstalar = () => (U.instalado() ? "" : `<button class="btn sec bloco instalar-fixo" id="instalar" type="button">${U.icone("baixar")}Instalar o app no celular</button>`);
   function ligarInstalar() { const b = $("#instalar"); if (b) b.onclick = () => U.instalar(); }
 
   function telaLogin() {
@@ -190,6 +190,7 @@
       raizCss.setProperty("--cor-barra", b.cor_barra);
       raizCss.setProperty("--cor-barra-texto", textoSobre(b.cor_barra));
     } else { raizCss.removeProperty("--cor-barra"); raizCss.removeProperty("--cor-barra-texto"); }
+    U.corDaBarra();
   }
   function textoSobre(hex) {
     const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, bl = n & 255;
@@ -238,7 +239,7 @@
         <img class="logo" src="${esc(b.logo192_url || "icones/icone-192.png")}" alt="">
         <div class="topo-textos"><div class="nome">${esc(b.nome)}</div><div class="papel">${esc(perfil.papel === "dono" ? NOME_PAPEL.dono : perfil.nome + " · " + NOME_PAPEL[perfil.papel])}</div></div>
         <div class="topo-direita"><span id="status-topo" class="status-pill"></span><span id="online-topo" class="online oculto"></span></div>
-        <button class="btn mini sec sair-topo" id="sair-topo" aria-label="Sair">Sair</button>
+        <button class="btn mini sec sair-topo" id="sair-topo" aria-label="Sair">${U.icone("sair")}Sair</button>
       </div>
       <nav class="abas" role="tablist">${abasDoPapel().map(([id, t]) => `<button role="tab" data-aba="${id}" aria-selected="${id === aba}">${t}</button>`).join("")}</nav>
       </header>
@@ -456,7 +457,7 @@
       <div class="grade-2" style="margin-top:1rem">
         <section class="cartao"><h2>Este painel no celular</h2>
           <p class="pequeno suave">Instale o painel para abrir direto pela tela inicial${ehDono() ? " e, na próxima fase, receber os avisos de pedidos" : ""}.</p>
-          ${U.instalado() ? `<span class="selo ok">Instalado</span>` : `<button class="btn sec" id="instalar">📲 Instalar o painel</button>`}</section>
+          ${U.instalado() ? `<span class="selo ok">Instalado</span>` : `<button class="btn sec" id="instalar">${U.icone("baixar")}Instalar o painel</button>`}</section>
         <section class="cartao"><h2>Conta</h2>
           ${ehDono() ? `<p class="pequeno">Plano: <b>${esc(U.nomePlano(b.plano))}</b> · ${b.expira_em ? "até " + U.data(b.expira_em) : "sem vencimento"}</p>
             <p class="pequeno suave">${esc((S.sessao() && S.sessao().user && S.sessao().user.email) || "")}</p>
@@ -497,7 +498,7 @@
       <div class="grade-2" style="margin:1rem 0">
         <section class="cartao"><h2>Tema</h2>
           <div class="temas">${TEMAS.map(([id, nome, f, d]) => `<button class="tema-op" data-tema="${id}" aria-pressed="${barb.tema === id}"${leitura() ? " disabled" : ""}>
-            <span class="amostra" style="background:${f};border-color:${d}"><i style="background:${d}"></i></span>${nome}</button>`).join("")}</div></section>
+            <span class="amostra" aria-hidden="true"><i></i><b></b></span>${nome}</button>`).join("")}</div></section>
         <section class="cartao"><h2>Ver movimentação</h2>
           <label class="linha-check"><input type="checkbox" id="cfg-mov"${barb.ver_movimentacao ? " checked" : ""}${leitura() ? " disabled" : ""}> Mostrar quantas pessoas estão no site agora</label>
           <p class="pequeno suave" style="margin-top:.5rem">O número aparece no topo do painel e se atualiza a cada 30 segundos.</p></section>

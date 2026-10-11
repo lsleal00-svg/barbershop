@@ -83,7 +83,7 @@
     const pos = fila.filter((x) => x.fila_status === "aguardando").indexOf(p) + 1;
     const ultimo = i === fila.length - 1, primeiroAg = !at && fila[i - 1] && fila[i - 1].fila_status === "atendimento";
     return `<div class="fila-item${at ? " atendendo" : ""}${p.agendado_para ? " agendado" : ""}" data-id="${p.id}">
-      <div class="fi-pos">${at ? "✂️" : pos + "º"}</div>
+      <div class="fi-pos">${at ? U.icone("tesoura") : pos + "º"}</div>
       <div class="fi-info"><b>${esc(p.cliente_nome)}</b> ${zapLink(p.cliente_whatsapp)}
         <div class="pequeno">${itensTxt(p)} · ${C.dinheiro(p.total)}</div>
         <div class="pequeno"><span class="selo ${p.pago ? "ok" : p.forma === "prazo" ? "alerta" : "erro"}">${p.pago ? "Pago · " + FORMAS[p.forma] : p.forma === "prazo" ? "À prazo" : "A receber · " + FORMAS[p.forma]}</span>
@@ -130,7 +130,7 @@
         : U.ehIphone() && !U.instalado() ? "No iPhone, instale o painel na tela inicial (Safari → Compartilhar) para receber avisos."
         : "Com o painel aberto, toca um som a cada pedido novo."}</div></div>
       <div class="avisos-acoes">
-        ${!ativo && suportaPush() && window.CONFIG.VAPID_PUBLICA ? `<button class="btn mini" id="ativar-push">🔔 Ativar avisos no celular</button>` : ""}
+        ${!ativo && suportaPush() && window.CONFIG.VAPID_PUBLICA ? `<button class="btn mini" id="ativar-push">${U.icone("sino")}Ativar avisos no celular</button>` : ""}
         <label class="linha-check pequeno"><input type="checkbox" id="som"${somLigado() ? " checked" : ""}> Som</label>
       </div></section>`;
   }
