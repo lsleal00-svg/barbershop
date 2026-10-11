@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d1b18">
+<title>Barbearia</title>
+<link rel="icon" id="favicon" href="data:,">
+<link rel="apple-touch-icon" id="apple-icon" href="">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" id="apple-titulo" content="Barbearia">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="cliente.css">
+<script src="../config.js"></script>
+<script>
+  /* O manifesto (nome + logo do app instalado) precisa entrar o quanto antes. */
+  (function () {
+    var b = (new URLSearchParams(location.search).get("b") || "").toLowerCase().replace(/[^a-z0-9-]/g, "");
+    var C = window.CONFIG || {};
+    if (!b || !C.SUPABASE_URL) return;
+    var base = location.origin + location.pathname.replace(/[^/]*$/, "");
+    var l = document.createElement("link");
+    l.rel = "manifest";
+    l.href = String(C.SUPABASE_URL).trim().replace(/\/+$/, "").replace(/\/(rest|auth|functions|storage)\/v1$/, "") + "/functions/v1/manifest?b=" + encodeURIComponent(b) + "&base=" + encodeURIComponent(base);
+    document.head.appendChild(l);
+  })();
+</script>
+</head>
+<body>
+<div id="raiz"><div class="carregando-tela" aria-label="Carregando"></div></div>
+<script src="../js/supa.js"></script>
+<script src="../js/util.js"></script>
+<script src="cliente.js"></script>
+</body>
+</html>

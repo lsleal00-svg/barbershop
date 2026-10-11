@@ -1,0 +1,13 @@
+.carregando-tela { min-height: 100vh; display: grid; place-items: center; }
+.carregando-tela::after { content: ""; width: 34px; height: 34px; border: 3px solid var(--linha); border-top-color: var(--tinta); border-radius: 50%; animation: gira .8s linear infinite; }
+.cabeca { position: sticky; top: 0; z-index: 10; background: var(--cartao); border-bottom: 1px solid var(--linha); }
+.cabeca .barra { display: flex; align-items: center; gap: .75rem; padding: .65rem 1rem; max-width: 900px; margin: 0 auto; }
+.cabeca img { width: 46px; height: 46px; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); }
+.cabeca h1 { font-size: 1.1rem; margin: 0; flex: 1; }
+.corpo-cli { max-width: 900px; margin: 0 auto; padding: 1rem 1rem 4rem; }
+.capa { text-align: center; padding: 2rem 1rem; }
+.capa img { width: 150px; height: 150px; margin: 0 auto 1rem; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); box-shadow: var(--sombra); }
+.capa p { color: var(--suave); }
+.indisponivel { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 2rem 1rem; }
+.indisponivel img { width: 120px; height: 120px; margin: 0 auto 1rem; border-radius: 50%; object-fit: contain; background: #fff; border: 1px solid var(--linha); filter: grayscale(1); opacity: .8; }
+.capa .btn { white-space: normal; max-width: 100%; }
