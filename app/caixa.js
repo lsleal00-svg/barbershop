@@ -5,7 +5,7 @@
   const { $, $$, esc } = U;
   const C = CARDAPIO;
   const A = () => window.APP;
-  const FORMAS = { pix: "Pix", dinheiro: "Dinheiro", prazo: "À prazo" };
+  const FORMAS = { pix: "Pix", dinheiro: "Dinheiro", prazo: "À prazo", misto: "Pix + Dinheiro" };
   let d7 = null, secao = "cortes", corpoAtual = null, relatorio = { modo: "dia" };
 
   /* ---------- datas no relógio da barbearia ---------- */
@@ -24,6 +24,14 @@
   const contaTipo = (ps, t) => ps.reduce((s, p) => s + (p.itens || []).filter((i) => i.tipo === t).length, 0);
   const devendo = (ps) => ps.filter((p) => p.forma === "prazo" && !p.pago);
   const formaPaga = (p) => p.pago_forma || (p.forma === "prazo" ? "dinheiro" : p.forma);
+  /* Quanto entrou no Pix e quanto em dinheiro (no balcão dá para pagar com as duas). */
+  const partes = (p) => {
+    const f = formaPaga(p);
+    if (f === "misto") return { pix: Number(p.pago_pix || 0), din: Number(p.pago_dinheiro || 0) };
+    return f === "pix" ? { pix: Number(p.total), din: 0 } : { pix: 0, din: Number(p.total) };
+  };
+  const somaPix = (ps) => ps.reduce((s, p) => s + partes(p).pix, 0);
+  const somaDin = (ps) => ps.reduce((s, p) => s + partes(p).din, 0);
 
   async function buscar(de, ate) { return A().S.rpc("caixa_dados", { p_de: de, p_ate: ate }); }
 
@@ -41,7 +49,7 @@
   function desenhar() {
     const corpo = corpoAtual;
     const hoje = d7.hoje, rec = recebidos(d7.pedidos, hoje, hoje);
-    const pix = soma(rec.filter((p) => formaPaga(p) === "pix")), din = soma(rec.filter((p) => formaPaga(p) === "dinheiro"));
+    const pix = somaPix(rec), din = somaDin(rec);
     const SECOES = [["cortes", "Gráficos de corte"], ["produtos", "Gráficos de produtos"], ["relatorios", "Relatórios"], ["inadimplencia", `Inadimplência${devendo(d7.pedidos).length ? ` (${devendo(d7.pedidos).length})` : ""}`]];
     corpo.innerHTML = `
       <section class="cartao caixa-hoje" aria-label="Total do caixa hoje">
@@ -96,7 +104,7 @@
   function secaoCortes(el) {
     const hoje = d7.hoje, de = somaDias(hoje, -6);
     const real = realizados(d7.pedidos, de, hoje), rec = recebidos(d7.pedidos, de, hoje).filter((p) => p.tipo === "servico");
-    const pix = soma(rec.filter((p) => formaPaga(p) === "pix")), din = soma(rec.filter((p) => formaPaga(p) === "dinheiro"));
+    const pix = somaPix(rec), din = somaDin(rec);
     const aReceber = soma(devendo(d7.pedidos));
     const dias = Array.from({ length: 7 }, (_, i) => somaDias(de, i)).map((d) => ({ dia: d, rot: `${diaSemana(d)} ${br(d)}`, curto: diaSemana(d), v: soma(rec.filter((p) => ymd(p.pago_em) === d)) }));
     el.innerHTML = `<section class="cartao"><h2>Cortes · últimos 7 dias</h2><p class="pequeno suave">${esc(br(de))} a ${esc(br(hoje))}</p>
@@ -179,8 +187,8 @@
       relatorio.modo === "dia" ? hora(p.pago_em) : `${br(ymd(p.pago_em)).slice(0, 5)} ${hora(p.pago_em)}`,
       esc(p.cliente_nome), p.tipo === "produto" ? "Produto" : "Corte",
       (p.itens || []).map((i) => `${i.qtd > 1 ? i.qtd + "× " : ""}${esc(i.nome)}`).join(", "),
-      FORMAS[formaPaga(p)] + (p.forma === "prazo" ? " (à prazo)" : ""), C.dinheiro(p.total)]);
-    const resumo = { titulo, de, ate, vendas, cortes, prods, real, linhas, pix: soma(vendas.filter((p) => formaPaga(p) === "pix")), din: soma(vendas.filter((p) => formaPaga(p) === "dinheiro")) };
+      (formaPaga(p) === "misto" ? `Pix ${C.dinheiro(partes(p).pix)} + Dinheiro ${C.dinheiro(partes(p).din)}` : FORMAS[formaPaga(p)]) + (p.forma === "prazo" ? " (à prazo)" : "") + (p.origem === "balcao" ? " · balcão" : ""), C.dinheiro(p.total)]);
+    const resumo = { titulo, de, ate, vendas, cortes, prods, real, linhas, pix: somaPix(vendas), din: somaDin(vendas) };
     saida.innerHTML = `<h3 style="margin-top:1rem">${esc(titulo)}</h3>
       <div class="kpis">${tile("Cortes", C.dinheiro(soma(cortes)), `${cortes.length} recebimento(s)`)}${tile("Produtos", C.dinheiro(soma(prods)), `${prods.length} venda(s)`)}
         ${tile("Pix", C.dinheiro(resumo.pix))}${tile("Dinheiro", C.dinheiro(resumo.din))}${tile("Total geral", C.dinheiro(soma(vendas)))}</div>
@@ -250,6 +258,7 @@
       { rotulo: "Cancelar", classe: "sec", valor: null }, { rotulo: "Dinheiro", classe: "sec", valor: "dinheiro" }, { rotulo: "Pix", valor: "pix" },
     ]);
     if (!forma) return;
+    if (forma === "dinheiro" && !(await window.BALCAO.troco(Number(p.total), "Receber em dinheiro", `<b>${esc(p.cliente_nome)}</b> está pagando o que devia.`))) return;
     try {
       await A().S.rpc("pagamento_confirmar", { p_id: p.id, p_forma: forma });
       U.aviso("Pagamento registrado no caixa de hoje.");

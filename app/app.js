@@ -239,6 +239,7 @@
         <img class="logo" src="${esc(b.logo192_url || "icones/icone-192.png")}" alt="">
         <div class="topo-textos"><div class="nome">${esc(b.nome)}</div><div class="papel">${esc(perfil.papel === "dono" ? NOME_PAPEL.dono : perfil.nome + " · " + NOME_PAPEL[perfil.papel])}</div></div>
         <div class="topo-direita"><span id="status-topo" class="status-pill"></span><span id="online-topo" class="online oculto"></span></div>
+        <button class="btn mini btn-informar" id="informar-pag"${leitura() ? " disabled" : ""}>${U.icone("recibo")}Informar pagamentos</button>
         <button class="btn mini sec sair-topo" id="sair-topo" aria-label="Sair">${U.icone("sair")}Sair</button>
       </div>
       <nav class="abas" role="tablist">${abasDoPapel().map(([id, t]) => `<button role="tab" data-aba="${id}" aria-selected="${id === aba}">${t}</button>`).join("")}</nav>
@@ -250,6 +251,7 @@
     clearInterval(relogioStatus);
     relogioStatus = setInterval(() => { pintarStatus(); pintarOnline(); }, 30000);
     $("#sair-topo").onclick = sair;
+    $("#informar-pag").onclick = () => window.BALCAO.abrir();
     marcarPendentes();
     iniciarVigia();
     const telas = Object.assign({ inicio: telaInicio, equipe: telaEquipeDono, config: telaConfig }, window.APP_ABAS || {});
@@ -450,9 +452,9 @@
         <p class="link-texto" id="link-cliente">${esc(link)}</p>
         <div class="linha-acoes">
           <button class="btn" id="c-copiar">Copiar link</button>
+          <a class="btn sec" id="c-abrir" href="${esc(link)}" target="_blank" rel="noopener" title="Abre a tela do cliente numa nova janela">${U.icone("abrir")}Abrir link</a>
           <button class="btn sec" id="c-qr">Baixar QR Code</button>
           <button class="btn sec" id="c-whats">Enviar no WhatsApp</button>
-          <a class="btn sec" href="${esc(link)}" target="_blank" rel="noopener">Abrir</a>
         </div></section>
       <div class="grade-2" style="margin-top:1rem">
         <section class="cartao"><h2>Este painel no celular</h2>
@@ -502,6 +504,9 @@
         <section class="cartao"><h2>Ver movimentação</h2>
           <label class="linha-check"><input type="checkbox" id="cfg-mov"${barb.ver_movimentacao ? " checked" : ""}${leitura() ? " disabled" : ""}> Mostrar quantas pessoas estão no site agora</label>
           <p class="pequeno suave" style="margin-top:.5rem">O número aparece no topo do painel e se atualiza a cada 30 segundos.</p></section>
+        <section class="cartao"><h2>Fila no app do cliente</h2>
+          <label class="linha-check"><input type="checkbox" id="cfg-fila"${barb.esconder_fila ? " checked" : ""}${leitura() ? " disabled" : ""}> Esconder a fila dos clientes</label>
+          <p class="pequeno suave" style="margin-top:.5rem">Com a fila escondida, o cliente vê só os destaques, os cortes e os produtos. Ele continua podendo pedir e agendar, e você continua vendo a fila aqui no painel.</p></section>
       </div>`;
   }
 
@@ -521,6 +526,10 @@
       try { await salvarBarbearia({ tema: bt.dataset.tema }); telaConfig(); U.aviso("Tema aplicado no painel e no site dos clientes."); }
       catch (err) { U.aviso(err.message, "erro"); }
     }));
+    $("#cfg-fila").onchange = async (e) => {
+      try { await salvarBarbearia({ esconder_fila: e.target.checked }); U.aviso(e.target.checked ? "Fila escondida na tela do cliente." : "Fila visível na tela do cliente."); }
+      catch (err) { e.target.checked = !e.target.checked; U.aviso(err.message, "erro"); }
+    };
     $("#cfg-mov").onchange = async (e) => {
       try { await salvarBarbearia({ ver_movimentacao: e.target.checked }); pintarOnline(); }
       catch (err) { e.target.checked = !e.target.checked; U.aviso(err.message, "erro"); }
@@ -596,6 +605,7 @@
     leitura, ehDono,
     salvarBarbearia,
     redesenhar: () => desenharCasca(),
+    aoInformar: () => { if (aba === "caixa" || aba === "fila") desenharCasca(); },
     marcarPendentes,
     linkCliente,
   };

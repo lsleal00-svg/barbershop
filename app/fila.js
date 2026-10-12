@@ -102,8 +102,13 @@
     try {
       if (acao === "bloquear" && !(await U.confirmar("Bloquear", "Recusar e bloquear este aparelho por 30 minutos? Ele não consegue fazer novos pedidos nesse tempo.", "Bloquear", true))) return;
       if (acao === "remover" && !(await U.confirmar("Remover", "Remover este cliente da fila / cancelar o agendamento?", "Remover", true))) return;
-      if (acao === "finalizar") {
-        const p = dados.filas.flatMap((f) => f.fila).find((x) => x.id === id);
+      const pedido = dados.pendentes.concat(dados.filas.flatMap((f) => f.fila)).find((x) => x.id === id);
+      const recebeDinheiro = pedido && pedido.forma === "dinheiro" && !pedido.pago &&
+        ((acao === "aprovar" && !pedido.agendado_para) || acao === "pago" || acao === "finalizar");
+      if (recebeDinheiro) {
+        if (!(await window.BALCAO.troco(Number(pedido.total), "Receber em dinheiro", `<b>${esc(pedido.cliente_nome)}</b> · ${itensTxt(pedido)}`))) return;
+      } else if (acao === "finalizar") {
+        const p = pedido;
         if (p && !p.pago && p.forma !== "prazo" && !(await U.confirmar("Corte finalizado", `O pagamento de <b>${C.dinheiro(p.total)}</b> (${FORMAS[p.forma]}) ainda não foi marcado. Confirmar que recebeu e finalizar?`, "Recebi e finalizar"))) return;
       }
       await U.ocupado(bt, async () => {
