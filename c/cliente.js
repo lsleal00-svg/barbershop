@@ -140,6 +140,8 @@
   function desenharFila() {
     const alvo = $("#fila");
     if (!alvo) return;
+    alvo.classList.toggle("oculto", !!b.esconder_fila);   // o dono escolheu esconder a fila
+    if (b.esconder_fila) { alvo.innerHTML = ""; return; }
     const temServico = visiveis().some((i) => tipoDe(i) !== "outros");
     if (!barbeiros.length) {
       alvo.innerHTML = `<div class="cartao"><h2>Fila online</h2><p class="pequeno suave">Nenhum barbeiro atendendo pelo app no momento.</p></div>`;
