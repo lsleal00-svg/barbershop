@@ -1,6 +1,6 @@
 /* Service worker do app do cliente (todas as barbearias usam o mesmo arquivo).
    Mude VERSAO a cada atualização publicada. */
-const VERSAO = "cliente-v8";
+const VERSAO = "cliente-v9";
 const ARQUIVOS = ["./", "./index.html", "./cliente.css", "./cliente.js",
   "../css/cardapio.css", "../js/horario.js", "../js/cardapio.js", "../js/pix.js", "../vendor/qrcode.js", "../css/base.css", "../fontes/barlow-condensed-600.woff2", "../fontes/barlow-condensed-800.woff2", "../js/supa.js", "../js/util.js", "../config.js"];
 

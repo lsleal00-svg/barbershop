@@ -281,7 +281,7 @@
     const desenhar = () => {
       if (!carrinho.length) { j.fechar(); desenharBarra(); desenharLista(); return; }
       const total = carrinho.reduce((s, x) => s + C.final(x.item) * x.qtd, 0);
-      j.mostrar("Carrinho", carrinho.map((x) => linhaItem(x.item, `<div class="qtd"><button class="btn mini sec" data-q="-1" data-id="${x.item.id}" aria-label="Menos">−</button><b>${x.qtd}</b><button class="btn mini sec" data-q="1" data-id="${x.item.id}" aria-label="Mais">＋</button></div>`)).join("") +
+      j.mostrar("Carrinho", carrinho.map((x) => linhaItem(x.item, `<div class="qtd"><button class="btn mini sec" data-q="-1" data-id="${x.item.id}" aria-label="Menos">−</button><b>${x.qtd}</b><button class="btn mini sec" data-q="1" data-id="${x.item.id}" aria-label="Mais">＋</button><button class="btn mini sec tirar" data-tirar="${x.item.id}" aria-label="Tirar ${esc(x.item.nome)} do carrinho" title="Tirar do carrinho">${U.icone("lixeira")}</button></div>`)).join("") +
         `<p class="total-linha">Total: <b>${C.dinheiro(total)}</b></p>`, [
         { rotulo: "Continuar comprando", classe: "sec", acao: () => j.fechar() },
         { rotulo: "Finalizar compra", desligado: !aberta(), acao: () => { j.fechar(); assistente({ tipo: "produto", itens: carrinho.map((x) => ({ item: x.item, qtd: x.qtd })) }); } },
@@ -291,6 +291,10 @@
         x.qtd += Number(bt.dataset.q);
         if (x.qtd <= 0) carrinho = carrinho.filter((c) => c !== x);
         if (x.qtd > 20) x.qtd = 20;
+        salvarSacola(); desenharBarra(); desenhar();
+      }));
+      $$("[data-tirar]", j.el).forEach((bt) => (bt.onclick = () => {
+        carrinho = carrinho.filter((c) => c.item.id !== bt.dataset.tirar);
         salvarSacola(); desenharBarra(); desenhar();
       }));
     };

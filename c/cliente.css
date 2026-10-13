@@ -79,6 +79,9 @@ body.com-barra .corpo-cli { padding-bottom: 6.75rem; }
   background-image: linear-gradient(90deg, var(--linha) 50%, transparent 0); background-size: 8px 1px; background-repeat: repeat-x; background-position: bottom; }
 .linha-item img { width: 52px; height: 52px; border-radius: 3px; object-fit: cover; background: color-mix(in srgb, var(--casca) 9%, var(--cartao)); }
 .linha-item .qtd { display: flex; align-items: center; gap: .35rem; font-variant-numeric: tabular-nums; }
+.linha-item .qtd .tirar { min-width: 36px; padding: 0; margin-left: .25rem; color: var(--vermelho); }
+.linha-item .qtd .tirar svg { width: 18px; height: 18px; }
+.linha-item .qtd .tirar:hover:not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--vermelho); }
 .total-linha { font-size: 1.05rem; text-align: right; margin: .8rem 0 .25rem; }
 .total-linha b { font-family: var(--num); font-weight: 800; font-size: 1.6rem; }
 .opcoes { display: grid; gap: .5rem; }
