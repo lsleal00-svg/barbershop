@@ -330,7 +330,7 @@
   }
 
   /* ---------- assistente do pedido ---------- */
-  const FORMAS = { pix: "Pix", dinheiro: "Dinheiro em espécie", prazo: "À prazo" };
+  const FORMAS = { pix: "Pix", dinheiro: "Dinheiro em espécie", prazo: "À prazo", debito: "Cartão de débito", credito: "Cartão de crédito", misto: "Várias formas", aberto: "Paga na hora" };
   function totalDe(e) { return e.tipo === "produto" ? e.itens.reduce((s, x) => s + C.final(x.item) * x.qtd, 0) : e.itens.reduce((s, it) => s + C.final(it), 0); }
 
   function assistente(e) {
@@ -355,12 +355,12 @@
       $$("[data-q]", j.el).forEach((bt) => (bt.onclick = () => { e.quando = bt.dataset.q; passo(); }));
     }
     function pForma() {
-      const formas = ["pix", "dinheiro", "prazo"].filter((f) => b["aceita_" + f] && !(f === "prazo" && e.tipo === "produto"));
+      const formas = ["pix", "dinheiro", "debito", "credito", "prazo"].filter((f) => b["aceita_" + f] && !(f === "prazo" && e.tipo === "produto"));
       const hoje = new Date();
       const max = new Date(hoje.getTime() + (b.prazo_dias || 7) * 86400000);
       const ymd = (d) => d.toLocaleDateString("en-CA", { timeZone: b.fuso || "America/Sao_Paulo" });
       j.mostrar("Como vai pagar?", `<p class="total-linha">Total: <b>${C.dinheiro(totalDe(e))}</b></p><div class="opcoes">
-        ${formas.map((f) => `<button class="opcao" data-f="${f}"><b>${FORMAS[f]}</b><small>${f === "pix" ? "QR Code com o valor certo" : f === "dinheiro" ? "Pague no balcão" : `Pague até ${b.prazo_dias} dias depois`}</small></button>`).join("")}</div>
+        ${formas.map((f) => `<button class="opcao" data-f="${f}"><b>${FORMAS[f]}</b><small>${f === "pix" ? "QR Code com o valor certo" : f === "dinheiro" ? "Pague no balcão" : f === "debito" || f === "credito" ? "Pague na maquininha, no balcão" : `Pague até ${b.prazo_dias} dias depois`}</small></button>`).join("")}</div>
         <div class="campo oculto" id="prazo-data" style="margin-top:.75rem"><label for="pd">Data em que vai pagar</label><input id="pd" type="date" min="${ymd(hoje)}" max="${ymd(max)}"></div>`,
         [...(e.tipo === "servico" && !e.quandoFixo ? [voltar("quando")] : [])]);
       $$("[data-f]", j.el).forEach((bt) => (bt.onclick = () => {
@@ -473,7 +473,7 @@
         ${pix ? `<div class="pix-pagar"><p><b>Pague ${C.dinheiro(r.total)} com Pix</b></p>${U.qrSvg(pix, 220)}
           <p class="pequeno">Para: ${esc(r.pix.titular)} · ${esc(PIX.NOMES[r.pix.tipo])}: ${esc(PIX.mostrarChave(r.pix.tipo, r.pix.chave))}</p>
           <p class="pequeno suave">Depois de pagar, mostre o comprovante. O barbeiro confirma e aprova o seu pedido.</p></div>` : ""}
-        ${e.forma === "dinheiro" && e.quando !== "agendar" ? `<p class="pequeno suave">Pague no balcão: depois que o pagamento for confirmado você entra na fila.</p>` : ""}
+        ${["dinheiro", "debito", "credito"].includes(e.forma) && e.quando !== "agendar" ? `<p class="pequeno suave">Pague no balcão: depois que o pagamento for confirmado você entra na fila.</p>` : ""}
         ${e.quando === "agendar" ? `<p class="pequeno suave">Quando o barbeiro aprovar, seu horário fica reservado. No dia, você entra na fila na hora marcada.</p>` : ""}`, [
         ...(pix ? [{ rotulo: "Copiar Pix copia e cola", classe: "sec", acao: () => U.copiar(pix) }] : []),
         { rotulo: "Ver meus pedidos", acao: () => { j.fechar(); verMeus(); } },
