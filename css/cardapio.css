@@ -97,3 +97,9 @@
 @keyframes pulso { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 6px transparent; } }
 .vazio-cardapio { text-align: center; padding: 2rem 1rem; color: var(--suave); border-radius: var(--raio);
   background: color-mix(in srgb, var(--cartao) 55%, transparent); outline: 1.5px dashed var(--linha); outline-offset: -1px; }
+/* no computador o trilho mostra a barra de rolagem (sem ela não dá para chegar ao fim com o mouse) */
+@media (hover: hover) and (pointer: fine) {
+  .barra-cat { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--cor-barra-texto) 45%, transparent) transparent; }
+  .barra-cat::-webkit-scrollbar { display: block; height: 6px; }
+  .barra-cat::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--cor-barra-texto) 45%, transparent); border-radius: 3px; }
+}
