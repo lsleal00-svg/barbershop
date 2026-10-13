@@ -31,7 +31,14 @@
           <label class="forma"><input type="checkbox" id="f-pix"${b.aceita_pix ? " checked" : ""}${dis()}><span><b>Pix</b><br><small>${chaves.length ? "Clientes pagam pela chave cadastrada abaixo." : "Cadastre a chave Pix abaixo."}</small></span></label>
           <label class="forma"><input type="checkbox" id="f-dinheiro"${b.aceita_dinheiro ? " checked" : ""}${dis()}><span><b>Dinheiro em espécie</b><br><small>Nada para cadastrar.</small></span></label>
           <label class="forma"><input type="checkbox" id="f-prazo"${b.aceita_prazo ? " checked" : ""}${dis()}><span><b>À prazo</b><br><small>Só para cortes e barba (não vale para produtos).</small></span></label>
+          <div class="forma-cartao"><label class="forma"><input type="checkbox" id="f-debito"${b.aceita_debito ? " checked" : ""}${dis()}><span><b>Cartão de débito</b><br><small>Na maquininha, no balcão.</small></span></label>
+            <div class="taxa-campo${b.aceita_debito ? "" : " oculto"}" id="taxa-debito-campo"><label for="f-taxa-debito">Taxa do banco (%)</label>
+              <div class="taxa-linha"><input id="f-taxa-debito" inputmode="decimal" placeholder="1,99" value="${b.taxa_debito != null ? String(b.taxa_debito).replace(".", ",") : ""}"${dis()}><span aria-hidden="true">%</span></div><small class="suave">Opcional</small></div></div>
+          <div class="forma-cartao"><label class="forma"><input type="checkbox" id="f-credito"${b.aceita_credito ? " checked" : ""}${dis()}><span><b>Cartão de crédito</b><br><small>Na maquininha, no balcão.</small></span></label>
+            <div class="taxa-campo${b.aceita_credito ? "" : " oculto"}" id="taxa-credito-campo"><label for="f-taxa-credito">Taxa do banco (%)</label>
+              <div class="taxa-linha"><input id="f-taxa-credito" inputmode="decimal" placeholder="4,99" value="${b.taxa_credito != null ? String(b.taxa_credito).replace(".", ",") : ""}"${dis()}><span aria-hidden="true">%</span></div><small class="suave">Opcional</small></div></div>
         </div>
+        <p class="pequeno suave${b.aceita_debito || b.aceita_credito ? "" : " oculto"}" id="taxa-dica">Se informar a taxa do banco, o Caixa, os gráficos e os relatórios mostram quanto a maquininha descontou e o valor que sobra (líquido).</p>
         <div class="campo${b.aceita_prazo ? "" : " oculto"}" id="prazo-campo" style="margin-top:.75rem;max-width:320px">
           <label for="f-dias">Prazo máximo para pagar (dias)</label><input id="f-dias" type="number" inputmode="numeric" min="1" max="30" value="${b.prazo_dias || 7}"${dis()}>
           <p class="pequeno suave">Depois disso, o cliente vira inadimplente. Máximo de 30 dias.</p></div>
@@ -56,6 +63,12 @@
         <p class="pequeno suave" style="margin-top:.75rem">Por enquanto o pagamento por Pix é confirmado por você (ou pelo caixa) ao ver o dinheiro no banco. A confirmação automática pelo banco vem depois.</p>
       </section>`;
     $("#f-prazo").onchange = (e) => $("#prazo-campo").classList.toggle("oculto", !e.target.checked);
+    const cartoes = () => {
+      $("#taxa-debito-campo").classList.toggle("oculto", !$("#f-debito").checked);
+      $("#taxa-credito-campo").classList.toggle("oculto", !$("#f-credito").checked);
+      $("#taxa-dica").classList.toggle("oculto", !$("#f-debito").checked && !$("#f-credito").checked);
+    };
+    $("#f-debito").onchange = cartoes; $("#f-credito").onchange = cartoes;
     $("#f-salvar").onclick = salvarFormas;
     if ($("#f-chave")) {
       $("#pk-tipo").onchange = () => dicaChave(); dicaChave();
@@ -76,12 +89,23 @@
 
   async function salvarFormas() {
     const pix = $("#f-pix").checked, din = $("#f-dinheiro").checked, prazo = $("#f-prazo").checked;
+    const deb = $("#f-debito").checked, cred = $("#f-credito").checked;
     const dias = Math.round(Number($("#f-dias").value));
-    if (!pix && !din && !prazo) return U.aviso("Deixe pelo menos uma forma de pagamento ligada.", "erro");
+    const lerTaxa = (id, nome) => {
+      const t = $(id).value.trim();
+      if (!t) return null;
+      const n = Number(t.replace("%", "").replace(",", "."));
+      if (!(n >= 0 && n <= 30)) throw new Error(`A taxa do ${nome} precisa ser de 0 a 30%.`);
+      return Math.round(n * 100) / 100;
+    };
+    let tDeb, tCred;
+    try { tDeb = lerTaxa("#f-taxa-debito", "débito"); tCred = lerTaxa("#f-taxa-credito", "crédito"); } catch (err) { return U.aviso(err.message, "erro"); }
+    if (!pix && !din && !prazo && !deb && !cred) return U.aviso("Deixe pelo menos uma forma de pagamento ligada.", "erro");
     if (pix && !chaves.length) return U.aviso("Para ligar o Pix, cadastre antes uma chave Pix abaixo.", "erro");
     if (prazo && !(dias >= 1 && dias <= 30)) return U.aviso("O prazo precisa ser de 1 a 30 dias.", "erro");
     try {
-      await A().salvarBarbearia({ aceita_pix: pix, aceita_dinheiro: din, aceita_prazo: prazo, prazo_dias: prazo ? dias : A().b().prazo_dias });
+      await A().salvarBarbearia({ aceita_pix: pix, aceita_dinheiro: din, aceita_prazo: prazo, prazo_dias: prazo ? dias : A().b().prazo_dias,
+        aceita_debito: deb, aceita_credito: cred, taxa_debito: deb ? tDeb : A().b().taxa_debito, taxa_credito: cred ? tCred : A().b().taxa_credito });
       U.aviso("Formas de pagamento salvas.");
     } catch (err) { U.aviso(err.message, "erro"); }
   }

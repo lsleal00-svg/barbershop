@@ -34,10 +34,11 @@
       <div class="cardapio-admin">
         <div class="barra-cat barra-fixa" role="toolbar" aria-label="Categorias">
           ${cats.map((c) => `<button class="chip" data-cat="${c.id}" aria-pressed="${c.id === atual}">${c.icone ? `<span aria-hidden="true">${esc(c.icone)}</span>` : ""}${esc(c.nome)}</button>`).join("")}
-          <button class="chip acao" id="nova-cat"${dis()}>＋ Categoria</button>
-          ${cats.length ? `<button class="chip acao icone-so" id="cor-barra" title="Cor da barra" aria-label="Cor da barra"${dis()}>🎨</button>
-          <button class="chip acao icone-so" id="editar-cats" title="Editar categorias" aria-label="Editar categorias"${dis()}>✏️</button>` : ""}
         </div>
+        ${cats.length ? `<div class="cats-ferramentas" role="toolbar" aria-label="Categorias">
+          <button class="btn mini sec" id="nova-cat"${dis()}>${U.icone("mais")}Nova categoria</button>
+          <button class="btn mini sec" id="editar-cats"${dis()}>${U.icone("lapis")}Editar ou excluir categorias</button>
+          <button class="btn mini sec" id="cor-barra"${dis()}>${U.icone("paleta")}Cor da barra</button></div>` : ""}
         ${destaques.length ? `<section class="destaques" id="destaques" style="margin:1rem 0"></section>` : ""}
         ${!cats.length ? `<div class="vazio-cardapio" style="margin-top:1rem"><p><b>Comece criando uma categoria.</b></p>
             <p class="pequeno">Ex.: “Cortes” (tipo Corte de cabelo), “Barba” (tipo Barba) e “Bonés” (tipo Outros). Sem categoria não dá para cadastrar itens.</p>

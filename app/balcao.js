@@ -1,6 +1,6 @@
 /* balcao.js — "Informar pagamentos": a equipe registra no balcão os cortes e
    produtos de quem não usou o app. Monta uma comanda, escolhe o barbeiro e a
-   forma (Pix, dinheiro com troco, Pix + dinheiro ou à prazo) e o pedido vai
+   forma (dinheiro com troco, Pix, cartão, várias formas juntas ou à prazo) e o pedido vai
    para o Caixa, gráficos e relatórios como se fosse do app.
    Também oferece a calculadora de troco para as outras telas (BALCAO.troco). */
 (function () {
@@ -217,16 +217,136 @@
     if (n) { $("#pdv-ver", el).onclick = receber; $("#pdv-receber", el).onclick = receber; }
   }
 
+  /* ---------- pagamento em uma ou várias formas (como nas maquininhas/PDV) ----------
+     Toque numa forma: ela entra com o valor que falta. Para dividir, diminua o valor
+     e toque em outra forma. Dinheiro mostra o troco; cartão mostra a taxa. */
+  const NOMES_FORMA = { dinheiro: "Dinheiro", pix: "Pix", debito: "Débito", credito: "Crédito" };
+  const ICONE_FORMA = { dinheiro: "dinheiro", pix: "pix", debito: "cartao", credito: "cartao", prazo: "calendario" };
+  const formaIcone = (f) => U.icone(ICONE_FORMA[f] || "dinheiro");
+
+  /* config: { aceita_debito, aceita_credito, taxa_debito, taxa_credito } */
+  function formasDisponiveis(cfg) {
+    return ["dinheiro", "pix"].concat(cfg.aceita_debito ? ["debito"] : [], cfg.aceita_credito ? ["credito"] : []);
+  }
+  function pagadorHtml(id, cfg, extras) {
+    const fs = formasDisponiveis(cfg);
+    return `<div class="pagador" id="${id}">
+      <div class="formas-seg formas-n${fs.length}" role="group" aria-label="Formas de pagamento">${fs.map((f) =>
+        `<button type="button" class="forma-seg" data-f="${f}" aria-pressed="false">${formaIcone(f)}<span>${NOMES_FORMA[f]}</span></button>`).join("")}</div>${extras || ""}
+      <div class="pg-linhas" aria-live="polite"></div>
+      <div class="pg-situacao"></div>
+      <p class="pequeno suave pg-dica">Toque na forma de pagamento. Para dividir em duas ou mais formas, diminua o valor e toque na próxima.</p>
+      <div class="pg-troco"></div></div>`;
+  }
+  function ligarPagador(raiz, id, totalInicial, cfg, inicial) {
+    const el = $("#" + id, raiz);
+    let total = totalInicial, linhas = [], troco = null;
+    const taxaDe = (f) => (f === "debito" ? Number(cfg.taxa_debito || 0) : f === "credito" ? Number(cfg.taxa_credito || 0) : 0);
+    const soma = () => linhas.reduce((s, l) => s + centavos(isNaN(l.v) ? 0 : l.v), 0) / 100;
+    const falta = () => (centavos(total) - centavos(soma())) / 100;
+    function pintarLinhas(foco) {
+      $(".pg-linhas", el).innerHTML = linhas.map((l, i) => {
+        const tx = taxaDe(l.f), desc = tx && !isNaN(l.v) ? Math.round(l.v * tx) / 100 : 0;
+        return `<div class="pg-linha" data-i="${i}">
+          <span class="pg-forma">${formaIcone(l.f)}<b>${NOMES_FORMA[l.f]}</b></span>
+          <div class="troco-linha"><span class="troco-rs" aria-hidden="true">R$</span><input class="pg-valor" inputmode="decimal" autocomplete="off" aria-label="Valor no ${NOMES_FORMA[l.f]}" value="${isNaN(l.v) ? "" : valorCampo(l.v)}"></div>
+          <button type="button" class="pg-remover" aria-label="Remover ${NOMES_FORMA[l.f]}">${U.icone("fechar")}</button>
+          ${tx ? `<span class="pg-taxa pequeno">Taxa da maquininha ${String(tx).replace(".", ",")}%${desc ? ` · −${C.dinheiro(desc)}` : ""}</span>` : ""}</div>`;
+      }).join("");
+      $$(".pg-linha", el).forEach((row) => {
+        const i = Number(row.dataset.i), inp = $(".pg-valor", row);
+        inp.oninput = () => { linhas[i].v = inp.value.trim() ? lerValor(inp.value) : NaN; pintarSituacao(); pintarTaxa(row, i); };
+        inp.onblur = () => { if (!isNaN(linhas[i].v)) inp.value = valorCampo(linhas[i].v); };
+        inp.onfocus = () => inp.select();
+        $(".pg-remover", row).onclick = () => { linhas.splice(i, 1); pintarTudo(); };
+      });
+      if (foco != null) { const f = $(`.pg-linha[data-i="${foco}"] .pg-valor`, el); if (f) f.focus(); }
+    }
+    function pintarTaxa(row, i) {
+      const t = $(".pg-taxa", row); if (!t) return;
+      const tx = taxaDe(linhas[i].f), v = linhas[i].v, desc = !isNaN(v) ? Math.round(v * tx) / 100 : 0;
+      t.textContent = `Taxa da maquininha ${String(tx).replace(".", ",")}%${desc ? ` · −${C.dinheiro(desc)}` : ""}`;
+    }
+    function pintarSituacao() {
+      const rec = soma(), f = falta();
+      const s = $(".pg-situacao", el);
+      s.className = "pg-situacao" + (!linhas.length ? " vazio" : f === 0 ? " ok" : f < 0 ? " erro" : " falta");
+      s.innerHTML = !linhas.length ? "" : `<div><span>Total recebido</span><b class="num">${C.dinheiro(rec)}</b></div>
+        <div><span>${f < 0 ? "Passou do total" : "Falta receber"}</span><b class="num">${C.dinheiro(Math.abs(f))}</b></div>`;
+      $$(".forma-seg[data-f]", el).forEach((b) => b.setAttribute("aria-pressed", String(linhas.some((l) => l.f === b.dataset.f))));
+      $(".pg-dica", el).classList.toggle("oculto", linhas.length > 1);
+      // troco: só quando há dinheiro
+      const din = linhas.filter((l) => l.f === "dinheiro").reduce((s, l) => s + centavos(isNaN(l.v) ? 0 : l.v), 0) / 100;
+      const alvo = $(".pg-troco", el);
+      if (din > 0) {
+        const rot = "Recebido em dinheiro (para o troco)";
+        if (!troco) { alvo.innerHTML = trocoHtml(id + "-troco", din, rot); troco = ligarTroco(el, id + "-troco", din); }
+        else { $("label", alvo).textContent = rot; troco.novoTotal(din); }
+      } else { alvo.innerHTML = ""; troco = null; }
+    }
+    function pintarTudo(foco) { pintarLinhas(foco); pintarSituacao(); }
+    function tocar(f) {
+      const fl = falta();
+      if (!linhas.length) linhas.push({ f, v: total });
+      else if (fl > 0) linhas.push({ f, v: fl });
+      else if (linhas.length === 1 && linhas[0].f !== f) linhas[0].f = f;      // trocou de ideia
+      else if (linhas.some((l) => l.f === f)) return pintarTudo(linhas.findIndex((l) => l.f === f));
+      else return U.aviso("O total já foi recebido. Para dividir, diminua o valor de uma forma e toque em outra.", "erro");
+      pintarTudo(linhas.length > 1 ? linhas.length - 1 : null);
+    }
+    $$(".forma-seg[data-f]", el).forEach((b) => (b.onclick = () => tocar(b.dataset.f)));
+    if (inicial && formasDisponiveis(cfg).includes(inicial)) linhas.push({ f: inicial, v: total });
+    pintarTudo();
+    return {
+      estado() {
+        if (!linhas.length) return { ok: false, msg: "Toque na forma de pagamento." };
+        if (linhas.some((l) => isNaN(l.v) || l.v <= 0)) return { ok: false, msg: "Cada forma precisa de um valor maior que zero (ou remova a que não usou)." };
+        const f = falta();
+        if (f > 0) return { ok: false, msg: `Falta receber ${C.dinheiro(f)}. Toque em outra forma ou ajuste os valores.` };
+        if (f < 0) return { ok: false, msg: `Os valores passaram ${C.dinheiro(-f)} do total. Ajuste os valores.` };
+        let trocoV = 0;
+        if (troco) { const e = troco.estado(); if (!e.ok) return { ok: false, msg: e.msg || `O dinheiro recebido é menor que a parte em dinheiro. Faltam ${C.dinheiro(e.falta)}.` }; trocoV = e.troco || 0; }
+        const junta = {};
+        linhas.forEach((l) => { junta[l.f] = (junta[l.f] || 0) + centavos(l.v); });
+        return { ok: true, pagamentos: Object.entries(junta).map(([f, c]) => ({ f, v: c / 100 })), troco: trocoV };
+      },
+      novoTotal(t) {
+        total = t;
+        if (linhas.length === 1) linhas[0].v = t;
+        pintarTudo();
+      },
+      vazio: () => !linhas.length,
+    };
+  }
+
+  /* Receber um pedido que ainda não foi pago (fila, agendado pelo painel, à prazo).
+     Devolve a lista de pagamentos ou null se cancelar. */
+  async function receberPedido(total, titulo, texto, cfg, inicial) {
+    let ctl = null, resp = null;
+    const p = U.modal(titulo || "Receber pagamento", `${texto ? `<p>${texto}</p>` : ""}
+      <div class="total-receber"><span>Total</span><b class="num">${C.dinheiro(total)}</b></div>${pagadorHtml("rcb", cfg)}`, [
+      { rotulo: "Cancelar", classe: "sec", valor: false },
+      { rotulo: "Confirmar recebimento", valor: true, antes: () => {
+        const e = ctl.estado();
+        if (!e.ok) { U.aviso(e.msg, "erro"); return false; }
+        resp = e; return true;
+      } },
+    ]);
+    [...document.querySelectorAll(".modal-fundo")].pop().classList.add("modal-comanda");
+    ctl = ligarPagador(document, "rcb", total, cfg, inicial);
+    const ok = await p;
+    return ok === true && resp ? resp : null;
+  }
+
   /* ---------- fechar a comanda ---------- */
   function receber() {
     if (!comanda.length) return;
     const temServico = comanda.some((x) => ehServico(x.item));
     const barbeiros = dados.barbeiros || [];
-    const formas = [["pix", "Pix"], ["dinheiro", "Dinheiro"], ["misto", "Pix + Dinheiro"]].concat(dados.aceita_prazo ? [["prazo", "À prazo"]] : []);
-    const st = { forma: "dinheiro", barbeiro: dados.papel === "associado" ? dados.equipe_id : (barbeiros[0] ? barbeiros[0].id : null) };
+    const st = { prazo: false, barbeiro: dados.papel === "associado" ? dados.equipe_id : (barbeiros[0] ? barbeiros[0].id : null) };
     const hoje = dados.hoje;
     const maxData = new Date(new Date(hoje + "T12:00:00Z").getTime() + dados.prazo_dias * 86400000).toISOString().slice(0, 10);
-    let troco = null, trocoMisto = null;
+    let pg = null;
 
     const corpo = `
       <div class="cmd-itens" id="cmd-itens"></div>
@@ -234,8 +354,14 @@
       ${temServico && dados.papel !== "associado" && barbeiros.length > 1 ? `<fieldset class="grupo"><legend>Quem fez o corte?</legend>
         <div class="chips-linha" id="cmd-barbeiro">${barbeiros.map((br) => `<button type="button" class="chip" data-id="${br.id || ""}" aria-pressed="${(br.id || null) === st.barbeiro}">${esc(br.nome)}</button>`).join("")}</div></fieldset>` : ""}
       <fieldset class="grupo"><legend>Forma de pagamento</legend>
-        <div class="formas-seg" id="cmd-formas" role="radiogroup">${formas.map(([id, t]) => `<button type="button" class="forma-seg" role="radio" data-f="${id}" aria-checked="${id === st.forma}">${formaIcone(id)}<span>${t}</span></button>`).join("")}</div></fieldset>
-      <div id="cmd-forma"></div>`;
+        ${pagadorHtml("cmd-pg", dados, dados.aceita_prazo ? `<button type="button" class="btn sec prazo-alternar" id="cmd-prazo" aria-pressed="false">${formaIcone("prazo")}<span>Vai pagar depois (à prazo)</span></button>` : "")}
+        <div id="cmd-prazo-campos" class="oculto">
+          <div class="campo"><label for="cmd-nome-p">Nome do cliente</label><input id="cmd-nome-p" maxlength="60" autocomplete="off"></div>
+          <div class="campo"><label for="cmd-zap">WhatsApp com DDD</label><input id="cmd-zap" type="tel" inputmode="tel" placeholder="(91) 98888-7777" autocomplete="off"></div>
+          <div class="campo"><label for="cmd-data">Paga até</label><input id="cmd-data" type="date" min="${hoje}" max="${maxData}" value="${maxData}"></div>
+          <p class="pequeno suave">Fica em <b>Caixa → Inadimplência</b> até ser pago, com o botão de cobrança no WhatsApp. <button type="button" class="link" id="cmd-prazo-sair">Voltar às outras formas</button></p>
+        </div></fieldset>
+      <div class="campo cmd-nome-op" id="cmd-nome-campo"><label for="cmd-nome">Nome do cliente (opcional)</label><input id="cmd-nome" maxlength="60" placeholder="Cliente no balcão" autocomplete="off"></div>`;
     const espera = U.modal("Fechar comanda", corpo, [
       { rotulo: "Voltar", classe: "sec", valor: false },
       { rotulo: "Confirmar", valor: true, antes: confirmar },
@@ -263,85 +389,31 @@
       const t = totalComanda();
       $("#cmd-total", m).textContent = C.dinheiro(t);
       botaoOk.textContent = `Confirmar · ${C.dinheiro(t)}`;
-      if (st.forma === "dinheiro" && troco) troco.novoTotal(t);
-      if (st.forma === "misto") recalcularMisto("pix");
+      if (pg) pg.novoTotal(t);
     }
-    function pintarForma() {
-      const t = totalComanda(), alvo = $("#cmd-forma", m);
-      troco = trocoMisto = null;
-      if (st.forma === "pix") {
-        alvo.innerHTML = `<p class="aviso-pix pequeno">Confira o Pix de <b id="cmd-pixv">${C.dinheiro(t)}</b> no seu banco antes de confirmar.</p>${campoNome()}`;
-      } else if (st.forma === "dinheiro") {
-        alvo.innerHTML = trocoHtml("cmd-troco", t) + campoNome();
-        troco = ligarTroco(m, "cmd-troco", t);
-      } else if (st.forma === "misto") {
-        alvo.innerHTML = `
-          <div class="divisao" aria-hidden="true"><i class="d-pix"></i><i class="d-din"></i></div>
-          <div class="misto">
-            <div><label for="cmd-pix">No Pix</label><div class="troco-linha"><span class="troco-rs" aria-hidden="true">R$</span><input id="cmd-pix" inputmode="decimal" autocomplete="off"></div></div>
-            <div><label for="cmd-din">Em dinheiro</label><div class="troco-linha"><span class="troco-rs" aria-hidden="true">R$</span><input id="cmd-din" inputmode="decimal" autocomplete="off"></div></div>
-          </div>
-          <p class="pequeno suave">Digite um dos valores: o outro completa o total sozinho.</p>
-          <div class="notas" role="group" aria-label="Dividir"><button type="button" class="chip" id="cmd-metade">Metade / metade</button></div>
-          <div id="cmd-misto-erro" class="troco-res falta oculto" aria-live="polite"></div>
-          <div id="cmd-misto-troco"></div>${campoNome()}`;
-        const pix = $("#cmd-pix", m), din = $("#cmd-din", m);
-        pix.oninput = () => recalcularMisto("pix");
-        din.oninput = () => recalcularMisto("din");
-        [pix, din].forEach((c) => (c.onblur = () => { const v = lerValor(c.value); if (c.value.trim() && !isNaN(v)) c.value = valorCampo(v); }));
-        $("#cmd-metade", m).onclick = () => { pix.value = valorCampo(Math.floor(t * 50) / 100); recalcularMisto("pix"); };
-        recalcularMisto("pix");
-      } else {
-        alvo.innerHTML = `<div class="campo"><label for="cmd-nome">Nome do cliente</label><input id="cmd-nome" maxlength="60" autocomplete="off"></div>
-          <div class="campo"><label for="cmd-zap">WhatsApp com DDD</label><input id="cmd-zap" type="tel" inputmode="tel" placeholder="(91) 98888-7777" autocomplete="off"></div>
-          <div class="campo"><label for="cmd-data">Paga até</label><input id="cmd-data" type="date" min="${hoje}" max="${maxData}" value="${maxData}"></div>
-          <p class="pequeno suave">Fica em <b>Caixa → Inadimplência</b> até ser pago, com o botão de cobrança no WhatsApp.</p>`;
-      }
-    }
-    function campoNome() {
-      return `<div class="campo cmd-nome-op"><label for="cmd-nome">Nome do cliente (opcional)</label><input id="cmd-nome" maxlength="60" placeholder="Cliente no balcão" autocomplete="off"></div>`;
-    }
-    function recalcularMisto(origem) {
-      const t = totalComanda(), pix = $("#cmd-pix", m), din = $("#cmd-din", m);
-      if (!pix) return;
-      if (origem === "pix" || origem === "din") {
-        const de = origem === "pix" ? pix : din, para = origem === "pix" ? din : pix;
-        const v = de.value.trim() ? lerValor(de.value) : NaN;
-        if (!isNaN(v)) para.value = v < t ? valorCampo((centavos(t) - centavos(v)) / 100) : "";
-      }
-      const p = lerValor(pix.value), d = lerValor(din.value);
-      const erro = $("#cmd-misto-erro", m);
-      const valido = !isNaN(p) && !isNaN(d) && p > 0 && d > 0 && centavos(p) + centavos(d) === centavos(t);
-      erro.classList.toggle("oculto", valido || (!pix.value.trim() && !din.value.trim()));
-      erro.textContent = valido ? "" : "As duas partes precisam ser maiores que zero e somar o total.";
-      const fp = valido ? p / t : 0.5;
-      $(".d-pix", m).style.flexGrow = String(fp); $(".d-din", m).style.flexGrow = String(1 - fp);
-      const alvoTroco = $("#cmd-misto-troco", m);
-      if (valido) {
-        if (!trocoMisto) { alvoTroco.innerHTML = trocoHtml("cmd-troco2", d, "Recebido em dinheiro (para o troco)"); trocoMisto = ligarTroco(m, "cmd-troco2", d); }
-        else trocoMisto.novoTotal(d);
-      } else { alvoTroco.innerHTML = ""; trocoMisto = null; }
-      return valido ? { pix: p, din: d } : null;
+    function modoPrazo(sim) {
+      st.prazo = sim;
+      $("#cmd-prazo-campos", m).classList.toggle("oculto", !sim);
+      $("#cmd-nome-campo", m).classList.toggle("oculto", sim);
+      $$("#cmd-pg .pg-linhas, #cmd-pg .pg-situacao, #cmd-pg .pg-dica, #cmd-pg .pg-troco", m).forEach((x) => x.classList.toggle("oculto", sim));
+      $$("#cmd-pg .forma-seg[data-f]", m).forEach((b) => (b.disabled = sim));
+      $("#cmd-prazo", m).setAttribute("aria-pressed", String(sim));
+      if (sim) $("#cmd-nome-p", m).focus();
     }
     async function confirmar() {
-      const nome = ($("#cmd-nome", m) || {}).value || "";
-      const corpoRpc = { p_itens: comanda.map((x) => ({ id: x.item.id, qtd: x.qtd })), p_barbeiro: st.barbeiro || null, p_forma: st.forma,
-        p_pix: null, p_nome: nome.trim(), p_whatsapp: null, p_prazo_data: null };
-      let trocoFinal = null;
-      if (st.forma === "dinheiro") {
-        const e = troco.estado();
-        if (!e.ok) { U.aviso(e.msg || `O valor recebido é menor que o total. Faltam ${C.dinheiro(e.falta)}.`, "erro"); return false; }
-        if (e.troco) trocoFinal = e.troco;
-      }
-      if (st.forma === "misto") {
-        const r = recalcularMisto("conferir");
-        if (!r) { U.aviso("Informe quanto foi no Pix e quanto em dinheiro. As duas partes somam o total.", "erro"); return false; }
-        if (trocoMisto) { const e = trocoMisto.estado(); if (!e.ok) { U.aviso(e.msg || `O dinheiro recebido é menor que a parte em dinheiro. Faltam ${C.dinheiro(e.falta)}.`, "erro"); return false; } if (e.troco) trocoFinal = e.troco; }
-        corpoRpc.p_pix = r.pix;
-      }
-      if (st.forma === "prazo") {
+      const corpoRpc = { p_itens: comanda.map((x) => ({ id: x.item.id, qtd: x.qtd })), p_barbeiro: st.barbeiro || null,
+        p_pagamentos: null, p_nome: "", p_whatsapp: null, p_prazo_data: null };
+      let trocoFinal = 0;
+      if (st.prazo) {
+        corpoRpc.p_nome = $("#cmd-nome-p", m).value.trim();
         corpoRpc.p_whatsapp = $("#cmd-zap", m).value;
         corpoRpc.p_prazo_data = $("#cmd-data", m).value || null;
+        if (!corpoRpc.p_prazo_data) { U.aviso("Escolha a data em que o cliente vai pagar.", "erro"); return false; }
+      } else {
+        const e = pg.estado();
+        if (!e.ok) { U.aviso(e.msg, "erro"); return false; }
+        corpoRpc.p_pagamentos = e.pagamentos; trocoFinal = e.troco;
+        corpoRpc.p_nome = $("#cmd-nome", m).value.trim();
       }
       const r = await A().S.rpc("balcao_registrar", corpoRpc);
       comanda = [];
@@ -351,12 +423,13 @@
       return true;
     }
 
-    pintarItens(); pintarForma(); pintarTotal();
-    $$("#cmd-formas .forma-seg", m).forEach((bt) => (bt.onclick = () => {
-      st.forma = bt.dataset.f;
-      $$("#cmd-formas .forma-seg", m).forEach((o) => o.setAttribute("aria-checked", String(o === bt)));
-      pintarForma(); pintarTotal();
-    }));
+    pintarItens();
+    pg = ligarPagador(m, "cmd-pg", totalComanda(), dados);
+    pintarTotal();
+    if ($("#cmd-prazo", m)) {
+      $("#cmd-prazo", m).onclick = () => modoPrazo(!st.prazo);
+      $("#cmd-prazo-sair", m).onclick = () => modoPrazo(false);
+    }
     $$("#cmd-barbeiro .chip", m).forEach((bt) => (bt.onclick = () => {
       st.barbeiro = bt.dataset.id || null;
       $$("#cmd-barbeiro .chip", m).forEach((o) => o.setAttribute("aria-pressed", String(o === bt)));
@@ -364,9 +437,8 @@
     return espera;
   }
 
-  function formaIcone(f) {
-    return U.icone({ pix: "pix", dinheiro: "dinheiro", misto: "dividir", prazo: "calendario" }[f]);
-  }
+  /* Configuração de cartões/taxas para as outras telas (vem de barbearias). */
+  const cfgDaBarbearia = (b) => ({ aceita_debito: !!b.aceita_debito, aceita_credito: !!b.aceita_credito, taxa_debito: b.taxa_debito, taxa_credito: b.taxa_credito });
 
-  window.BALCAO = { abrir, troco };
+  window.BALCAO = { abrir, troco, receberPedido, cfgDaBarbearia, NOMES_FORMA };
 })();

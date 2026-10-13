@@ -310,3 +310,123 @@ body.pdv-aberto #avisos { bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
 .pdv-busca { max-width: 900px; margin: 0 auto; padding: 0 1rem .65rem; }
 .modal-comanda .modal-rodape { position: sticky; bottom: 0; z-index: 1; background-color: var(--cartao); }
 body.pdv-aberto:has(.modal-fundo) #avisos { bottom: auto; }
+.cats-ferramentas { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0 0 1rem; }
+.cats-ferramentas .btn svg { width: 16px; height: 16px; }
+.taxas { display: grid; gap: 0 1rem; margin-top: .75rem; }
+@media (min-width: 760px) { .taxas { grid-template-columns: 1fr 1fr; max-width: 640px; } }
+.taxa-linha { position: relative; max-width: 200px; }
+.taxa-linha input { padding-right: 2.2rem; font-variant-numeric: tabular-nums; }
+.taxa-linha span { position: absolute; right: .85rem; top: 50%; transform: translateY(-50%); color: var(--suave); font-weight: 700; }
+
+/* ---------- pagamento em várias formas ---------- */
+.forma-seg[aria-pressed="true"] { background: color-mix(in srgb, var(--ouro) 10%, var(--campo)); box-shadow: inset 0 0 0 2px var(--ouro); }
+.forma-seg:disabled { opacity: .45; cursor: not-allowed; }
+.pg-linhas { display: grid; gap: .45rem; margin-top: .7rem; }
+.pg-linhas:empty { display: none; }
+.pg-linha { display: grid; grid-template-columns: minmax(96px, auto) minmax(0, 1fr) 44px; gap: .5rem; align-items: center; padding: .45rem .5rem .45rem .7rem; border-radius: var(--raio);
+  background: color-mix(in srgb, var(--casca) 5%, var(--cartao)); box-shadow: inset 0 0 0 1px var(--linha); animation: chega 240ms var(--ease-out); }
+.pg-forma { display: inline-flex; align-items: center; gap: .4rem; }
+.pg-forma svg { width: 20px; height: 20px; flex: none; color: var(--casca); }
+.pg-linha .troco-linha input { min-height: 44px; font-size: 1.3rem; }
+.pg-remover { width: 44px; height: 44px; border: 0; background: none; color: var(--suave); border-radius: var(--raio); cursor: pointer; display: grid; place-items: center; }
+.pg-remover:hover { background: color-mix(in srgb, var(--vermelho) 10%, transparent); color: var(--vermelho); }
+.pg-remover svg { width: 18px; height: 18px; }
+.pg-taxa { grid-column: 1 / -1; color: var(--suave); margin-top: -.15rem; }
+.pg-situacao { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .6rem; }
+.pg-situacao.vazio { display: none; }
+.pg-situacao > div { display: grid; gap: .1rem; padding: .55rem .75rem; border-radius: var(--raio); background: color-mix(in srgb, var(--tinta) 4%, var(--cartao)); }
+.pg-situacao span { font-size: .72rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--suave); }
+.pg-situacao b { font-family: var(--num); font-weight: 800; font-size: 1.5rem; line-height: 1; }
+.pg-situacao.ok > div:last-child { background: var(--ok-fundo); color: var(--ok-texto); }
+.pg-situacao.falta > div:last-child { background: var(--alerta-fundo); color: var(--alerta-texto); }
+.pg-situacao.erro > div:last-child { background: var(--erro-fundo); color: var(--erro-texto); }
+.pg-situacao > div:last-child span { color: inherit; }
+.pg-dica { margin: .6rem 0 0; }
+.pg-troco .troco { margin-top: .9rem; }
+#cmd-prazo-campos { margin-top: .9rem; }
+.formas-seg { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
+@media (min-width: 520px) { .formas-seg { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); } }
+.fila-ferramentas { display: flex; flex-wrap: wrap; gap: .5rem; }
+.fila-ferramentas .btn { flex: 1 1 200px; min-height: 48px; }
+.contador-neutro { background: var(--casca); color: var(--casca-texto); }
+.btn .contador-pend { margin-left: .2rem; }
+.ag-dia + .ag-dia { margin-top: 1rem; }
+.ag-dia h3 { font-family: var(--num); font-weight: 800; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .02em; margin: 0 0 .4rem; }
+.ag-item { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: .6rem; align-items: center; padding: .55rem 0;
+  background-image: linear-gradient(90deg, var(--linha) 50%, transparent 0); background-size: 8px 1px; background-repeat: repeat-x; background-position: bottom; }
+.ag-hora { font-family: var(--num); font-weight: 800; font-size: 1.45rem; color: var(--roxo); }
+.ag-resumo .total-receber span { text-transform: none; letter-spacing: 0; font-size: .9rem; font-weight: 700; }
+.ag-resumo .total-receber b { font-size: 1.8rem; }
+#ag-horas input[type=time] { max-width: 180px; font-variant-numeric: tabular-nums; }
+.dias-chips { --cor-barra: var(--cartao); --cor-barra-texto: var(--tinta); display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .3rem; }
+.slots { --cor-barra: var(--cartao); --cor-barra-texto: var(--tinta); display: flex; flex-wrap: wrap; gap: .4rem; }
+.slots .chip { font-variant-numeric: tabular-nums; }
+.caixa-hoje-liquido { display: flex; gap: .4rem 1.1rem; flex-wrap: wrap; margin-top: .55rem; padding-top: .55rem; font-size: .92rem; color: var(--casca-suave);
+  background-image: linear-gradient(90deg, color-mix(in srgb, var(--casca-texto) 40%, transparent) 50%, transparent 0); background-size: 8px 1px; background-repeat: repeat-x; }
+.caixa-hoje-liquido b { color: var(--casca-texto); }
+#r-saida .tabela td:nth-last-child(2), #r-saida .tabela th:nth-last-child(2) { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tabela td:last-child:has(.btn-excluir) { width: 1%; }
+.btn-excluir { color: var(--vermelho); }
+.btn-excluir svg { width: 15px; height: 15px; }
+/* relatório: cada forma de pagamento numa linha */
+.rel-parte, .rel-extra { display: block; white-space: nowrap; }
+.rel-extra { color: var(--suave); font-size: .82em; }
+.tabela-vendas td:nth-child(4) { min-width: 13rem; }
+.tabela-vendas .selo { margin-left: .25rem; vertical-align: 1px; }
+/* totais do relatório: o líquido em destaque, como o TOTAL da comanda */
+.total-banda { display: grid; gap: .6rem; margin-top: .6rem; padding: .85rem 1rem; border-radius: var(--raio); background: var(--casca); color: var(--casca-texto); }
+.total-banda.com-taxa { grid-template-columns: 1.4fr 1fr; align-items: end; }
+.total-banda .kpi { background: none; box-shadow: none; padding: 0; }
+.total-banda .rotulo-kpi { color: var(--casca-suave); font-weight: 800; font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; }
+.total-banda .valor-kpi { font-size: 2.3rem; line-height: 1; }
+.total-banda.com-taxa .kpi + .kpi .valor-kpi { font-size: 1.45rem; }
+.total-banda .nota-kpi { color: var(--casca-suave); }
+/* relatório no celular: cada venda vira um bloco (sem rolar para o lado), com o Excluir à vista */
+@media (max-width: 640px) {
+  .tabela-vendas thead { display: none; }
+  .tabela-vendas, .tabela-vendas tbody { display: block; }
+  .tabela-vendas tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .15rem .75rem; padding: .7rem 0;
+    background-image: linear-gradient(90deg, var(--linha) 50%, transparent 0); background-size: 8px 1px; background-repeat: repeat-x; background-position: bottom; }
+  .tabela-vendas td { display: block; border: 0; padding: 0; text-align: left !important; white-space: normal !important; min-width: 0 !important; }
+  .tabela-vendas td:nth-child(1) { grid-column: 1; color: var(--suave); font-size: .8rem; font-variant-numeric: tabular-nums; }
+  .tabela-vendas td:nth-child(2) { grid-column: 1; font-weight: 700; font-size: .98rem; }
+  .tabela-vendas td:nth-child(3) { grid-column: 1; }
+  .tabela-vendas td:nth-child(4) { grid-column: 1; color: var(--suave); font-size: .85rem; }
+  .tabela-vendas td:nth-child(5) { grid-column: 2; grid-row: 1 / span 2; align-self: start; font-family: var(--num); font-weight: 800; font-size: 1.35rem; text-align: right !important; }
+  .tabela-vendas td:nth-child(6) { grid-column: 2; grid-row: 3 / span 2; align-self: end; justify-self: end; width: auto !important; }
+  .tabela-vendas tbody tr:hover { background-color: transparent; }
+}
+.caixa-menu { flex-wrap: wrap; }
+@media (min-width: 860px) { .caixa-menu { flex-wrap: nowrap; } }
+@media (hover: hover) and (pointer: fine) {
+  .dias-chips { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--tinta) 30%, transparent) transparent; }
+}
+/* chips dentro de cartões (relatórios, escolhas): cores do cartão, não do trilho do topo */
+.abas-mini, .chips-linha, .notas, .slots, .dias-chips { --cor-barra: var(--cartao); --cor-barra-texto: var(--tinta); }
+.abas-mini { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.formas-seg.formas-n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.formas-seg.formas-n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.formas-seg.formas-n4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 640px) { .formas-seg.formas-n4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.prazo-alternar { width: 100%; margin-top: .5rem; justify-content: center; }
+.prazo-alternar svg { width: 18px; height: 18px; }
+.prazo-alternar[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ouro); background: color-mix(in srgb, var(--ouro) 10%, var(--campo)); }
+.forma-cartao { display: grid; border-radius: var(--raio); }
+.forma-cartao:has(.taxa-campo:not(.oculto)) .forma { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.taxa-campo { display: grid; grid-template-columns: auto minmax(0, 140px) auto; align-items: center; gap: .5rem; padding: .6rem .8rem .7rem 2.6rem;
+  border-radius: 0 0 var(--raio) var(--raio); box-shadow: inset 0 0 0 1px var(--linha); margin-top: -1px; background: color-mix(in srgb, var(--casca) 4%, var(--cartao)); }
+.taxa-campo label { margin: 0; text-transform: none; letter-spacing: 0; font-size: .85rem; color: var(--tinta); }
+.taxa-campo .taxa-linha input { min-height: 40px; }
+.taxa-campo { grid-template-columns: auto 104px auto; justify-content: start; padding-left: 2.65rem; }
+.taxa-campo label { white-space: nowrap; }
+.taxa-campo .taxa-linha { max-width: none; }
+.taxa-campo .taxa-linha input { padding: .4rem 1.9rem .4rem .6rem; }
+.taxa-campo .taxa-linha span { right: .6rem; }
+/* ajuste: relatório cabe no cartão do computador, Excluir sempre inteiro */
+.tabela-vendas td:nth-child(4) { min-width: 10.5rem; }
+.tabela-vendas td:nth-child(2), .tabela-vendas td:nth-child(3) { min-width: 0; }
+.tabela-vendas td:last-child { width: 1%; white-space: nowrap; }
+/* ajuste: taxa do banco cabe no celular */
+.forma-cartao, .forma-cartao .forma { min-width: 0; max-width: 100%; }
+.taxa-campo { grid-template-columns: auto 6.5rem; padding-left: 2.65rem; }
+.taxa-campo small { grid-column: 1 / -1; margin-top: -.15rem; }

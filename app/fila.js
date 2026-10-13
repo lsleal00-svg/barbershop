@@ -5,7 +5,7 @@
   const { $, $$, esc } = U;
   const C = CARDAPIO;
   const A = () => window.APP;
-  const FORMAS = { pix: "Pix", dinheiro: "Dinheiro", prazo: "À prazo" };
+  const FORMAS = { pix: "Pix", dinheiro: "Dinheiro", prazo: "À prazo", debito: "Débito", credito: "Crédito", misto: "Várias formas", aberto: "Paga na hora" };
   let dados = null, timer = null, conhecidos = null, corpoAtual = null;
 
   const quando = (iso) => new Date(iso).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -47,20 +47,27 @@
     const ro = A().leitura();
     const dis = ro ? " disabled" : "";
     const pend = dados.pendentes, ver = dados.papel !== "associado";
+    const nAg = dados.agendamentos.length;
     corpo.innerHTML = `<div class="fila-painel">
+      <div class="fila-ferramentas">
+        <button class="btn" id="agendar-corte"${dis}>${U.icone("calendario")}Agendar um corte</button>
+        <button class="btn sec" id="ver-agendados">${U.icone("lista")}Ver cortes agendados${nAg ? ` <span class="contador-pend contador-neutro">${nAg}</span>` : ""}</button>
+      </div>
       ${blocoAvisos()}
       <section class="cartao"><h2>Pedidos para aprovar ${pend.length ? `<span class="contador-pend">${pend.length}</span>` : ""}</h2>
         ${pend.length ? pend.map((p) => cartaoPendente(p, ver, dis)).join("") : `<p class="suave pequeno">Nenhum pedido esperando. Quando chegar, toca um aviso.</p>`}
       </section>
       ${(dados.filas || []).map((f) => `<section class="cartao fila-de"><h2>Fila de ${esc(f.nome)}</h2>
         ${f.fila.length ? f.fila.map((p, i) => cartaoFila(p, i, f.fila, dis)).join("") : `<p class="suave pequeno">Ninguém na fila.</p>`}</section>`).join("")}
-      <section class="cartao"><h2>Próximos agendamentos</h2>
+      <section class="cartao" id="proximos-agendamentos"><h2>Próximos agendamentos</h2>
         ${dados.agendamentos.length ? dados.agendamentos.map((p) => `<div class="pedido-linha" data-id="${p.id}">
           <div><b>${esc(quando(p.agendado_para))}</b> · ${esc(p.cliente_nome)} ${zapLink(p.cliente_whatsapp)}
             <div class="pequeno suave">${itensTxt(p)} · ${C.dinheiro(p.total)} · ${FORMAS[p.forma]}${ver ? " · com " + esc(nomeBarbeiro(p.barbeiro_id)) : ""}</div></div>
           <button class="btn mini sec" data-a="remover"${dis}>Cancelar</button></div>`).join("") : `<p class="suave pequeno">Nenhum agendamento.</p>`}
       </section></div>`;
     $$("[data-a]", corpo).forEach((bt) => (bt.onclick = () => agir(bt.dataset.a, bt.closest("[data-id]").dataset.id, bt)));
+    $("#agendar-corte", corpo).onclick = () => agendarCorte();
+    $("#ver-agendados", corpo).onclick = () => verAgendados();
     ligarAvisos();
   }
 
@@ -102,26 +109,158 @@
     try {
       if (acao === "bloquear" && !(await U.confirmar("Bloquear", "Recusar e bloquear este aparelho por 30 minutos? Ele não consegue fazer novos pedidos nesse tempo.", "Bloquear", true))) return;
       if (acao === "remover" && !(await U.confirmar("Remover", "Remover este cliente da fila / cancelar o agendamento?", "Remover", true))) return;
-      const pedido = dados.pendentes.concat(dados.filas.flatMap((f) => f.fila)).find((x) => x.id === id);
-      const recebeDinheiro = pedido && pedido.forma === "dinheiro" && !pedido.pago &&
-        ((acao === "aprovar" && !pedido.agendado_para) || acao === "pago" || acao === "finalizar");
-      if (recebeDinheiro) {
+      const pedido = dados.pendentes.concat(dados.filas.flatMap((f) => f.fila), dados.agendamentos).find((x) => x.id === id);
+      let pagamentos = null;
+      if (pedido && !pedido.pago && pedido.forma !== "prazo" && (acao === "pago" || acao === "finalizar")) {
+        // na hora de receber, o barbeiro informa como foi pago (pode dividir em várias formas, com troco)
+        const r = await window.BALCAO.receberPedido(Number(pedido.total), acao === "finalizar" ? "Receber e finalizar" : "Receber pagamento",
+          `<b>${esc(pedido.cliente_nome)}</b> · ${itensTxt(pedido)}`, window.BALCAO.cfgDaBarbearia(A().b()), pedido.forma);
+        if (!r) return;
+        pagamentos = r.pagamentos;
+        if (r.troco) setTimeout(() => U.aviso(`Troco: ${C.dinheiro(r.troco)}.`), 400);
+      } else if (acao === "aprovar" && pedido && pedido.forma === "dinheiro" && !pedido.agendado_para) {
         if (!(await window.BALCAO.troco(Number(pedido.total), "Receber em dinheiro", `<b>${esc(pedido.cliente_nome)}</b> · ${itensTxt(pedido)}`))) return;
-      } else if (acao === "finalizar") {
-        const p = pedido;
-        if (p && !p.pago && p.forma !== "prazo" && !(await U.confirmar("Corte finalizado", `O pagamento de <b>${C.dinheiro(p.total)}</b> (${FORMAS[p.forma]}) ainda não foi marcado. Confirmar que recebeu e finalizar?`, "Recebi e finalizar"))) return;
       }
       await U.ocupado(bt, async () => {
+        if (pagamentos) await S.rpc("pedido_pagar", { p_id: id, p_pagamentos: pagamentos });
         if (acao === "aprovar" || acao === "recusar" || acao === "bloquear") await S.rpc("pedido_decidir", { p_id: id, p_acao: acao });
         else if (acao === "subir" || acao === "descer") await S.rpc("fila_mover", { p_id: id, p_direcao: acao === "subir" ? -1 : 1 });
         else if (acao === "finalizar") await S.rpc("fila_finalizar", { p_id: id });
-        else if (acao === "pago") await S.rpc("pagamento_confirmar", { p_id: id });
         else if (acao === "remover") await S.rpc("pedido_remover", { p_id: id });
       });
       await carregar(); desenhar();
       const msg = { aprovar: "Aprovado.", recusar: "Pedido recusado.", bloquear: "Recusado e bloqueado por 30 min.", finalizar: "Corte finalizado. Próximo!", pago: "Pagamento confirmado.", remover: "Removido." }[acao];
       if (msg) U.aviso(msg);
     } catch (err) { U.aviso(err.message, "erro"); try { await carregar(); desenhar(); } catch (e) { /* */ } }
+  }
+
+  /* ---------- agendar um corte pelo painel (cliente sem app) ---------- */
+  const ymdNoFuso = (d, fuso) => d.toLocaleDateString("en-CA", { timeZone: fuso });
+  async function agendarCorte() {
+    const S = A().S, bid = A().b().id;
+    let cats, itens, cfg;
+    try {
+      [cats, itens, cfg] = await Promise.all([
+        S.rest(`categorias?barbearia_id=eq.${bid}&select=*&order=ordem.asc,criado_em.asc`),
+        S.rest(`itens?barbearia_id=eq.${bid}&esgotado=eq.false&select=*&order=ordem.asc,criado_em.asc`),
+        S.rpc("balcao_dados"),
+      ]);
+    } catch (err) { return U.aviso(err.message, "erro"); }
+    const tipo = (it) => (cats.find((c) => c.id === it.categoria_id) || {}).tipo;
+    const cabelos = itens.filter((i) => tipo(i) === "cabelo"), barbas = itens.filter((i) => tipo(i) === "barba");
+    if (!cabelos.length && !barbas.length) return U.aviso("Cadastre os cortes em Serviços & Produtos antes de agendar.", "erro");
+    const fuso = cfg.fuso || "America/Sao_Paulo";
+    const barbeiros = cfg.barbeiros || [];
+    const st = { cabelo: null, barba: null, barbeiro: cfg.papel === "associado" ? cfg.equipe_id : (barbeiros[0] ? barbeiros[0].id : null), dia: cfg.hoje, hora: null };
+    const dias = Array.from({ length: 21 }, (_, i) => { const d = new Date(Date.now() + i * 86400000); return ymdNoFuso(d, fuso); });
+    const rotDia = (y, i) => i === 0 ? "Hoje" : i === 1 ? "Amanhã" : new Date(y + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+    const chipsItens = (lista, t) => lista.length ? `<fieldset class="grupo"><legend>${t === "cabelo" ? "Corte de cabelo" : "Barba"}</legend>
+      <div class="chips-linha" data-tipo="${t}">${lista.map((it) => `<button type="button" class="chip" data-id="${it.id}" aria-pressed="false">${esc(it.nome)} · ${C.dinheiro(C.final(it))}</button>`).join("")}</div></fieldset>` : "";
+    const espera = U.modal("Agendar um corte", `
+      <div class="campo"><label for="ag-nome">Nome do cliente</label><input id="ag-nome" maxlength="60" autocomplete="off"></div>
+      <div class="campo"><label for="ag-zap">WhatsApp com DDD (opcional)</label><input id="ag-zap" type="tel" inputmode="tel" placeholder="(91) 98888-7777" autocomplete="off"></div>
+      ${cfg.papel !== "associado" && barbeiros.length > 1 ? `<fieldset class="grupo"><legend>Barbeiro</legend><div class="chips-linha" id="ag-barbeiro">${barbeiros.map((br) =>
+        `<button type="button" class="chip" data-id="${br.id || ""}" aria-pressed="${(br.id || null) === st.barbeiro}">${esc(br.nome)}</button>`).join("")}</div></fieldset>` : ""}
+      ${chipsItens(cabelos, "cabelo")}${chipsItens(barbas, "barba")}
+      <fieldset class="grupo"><legend>Dia</legend><div class="dias-chips" id="ag-dias">${dias.map((d, i) => `<button type="button" class="chip" data-dia="${d}" aria-pressed="${d === st.dia}">${rotDia(d, i)}</button>`).join("")}</div></fieldset>
+      <fieldset class="grupo"><legend>Horário</legend><div id="ag-horas" class="slots"></div></fieldset>
+      <div class="ag-resumo" id="ag-resumo"></div>
+      <p class="pequeno suave">O cliente paga na hora do corte: quando terminar, toque em <b>Corte finalizado</b> e informe como ele pagou.</p>`, [
+      { rotulo: "Cancelar", classe: "sec", valor: false },
+      { rotulo: "Agendar", valor: true, antes: async (m) => {
+        const nome = $("#ag-nome", m).value.trim();
+        if (nome.length < 2) { U.aviso("Digite o nome do cliente.", "erro"); return false; }
+        if (!st.cabelo && !st.barba) { U.aviso("Escolha o corte (ou a barba).", "erro"); return false; }
+        if (!st.hora) { U.aviso("Escolha o horário.", "erro"); return false; }
+        const quando = horaParaIso(st.dia, st.hora, fuso);
+        await S.rpc("agenda_criar", { p_itens: [st.cabelo, st.barba].filter(Boolean).map((id) => ({ id })), p_barbeiro: st.barbeiro || null,
+          p_nome: nome, p_whatsapp: $("#ag-zap", m).value, p_agendado_para: quando });
+        U.aviso(`Agendado: ${nome} · ${new Date(quando).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: fuso })}.`);
+        return true;
+      } },
+    ]);
+    const m = [...document.querySelectorAll(".modal-fundo")].pop();
+    m.classList.add("modal-comanda");
+    const resumo = () => {
+      const sel = [st.cabelo, st.barba].filter(Boolean).map((id) => itens.find((i) => i.id === id));
+      const total = sel.reduce((s2, it) => s2 + C.final(it), 0);
+      $("#ag-resumo", m).innerHTML = sel.length ? `<div class="total-receber"><span>${sel.map((i) => esc(i.nome)).join(" + ")}${st.hora ? ` · ${esc(st.hora)}` : ""}</span><b class="num">${C.dinheiro(total)}</b></div>` : "";
+    };
+    async function horas() {
+      const alvo = $("#ag-horas", m);
+      st.hora = null; resumo();
+      alvo.innerHTML = `<span class="pequeno suave">Carregando horários…</span>`;
+      try {
+        const r = await S.rpc("horarios_livres", { p_barbearia: bid, p_barbeiro: st.barbeiro || null, p_data: st.dia });
+        if (r && r.livre) {
+          alvo.innerHTML = `<input type="time" id="ag-hora-livre" step="300" aria-label="Horário">`;
+          $("#ag-hora-livre", m).onchange = (e) => { st.hora = e.target.value || null; resumo(); };
+          return;
+        }
+        const agora = new Date();
+        const slots = ((r && r.slots) || []).filter((h) => new Date(horaParaIso(st.dia, h, fuso)) > new Date(agora.getTime() + 5 * 60000));
+        alvo.innerHTML = slots.length ? slots.map((h) => `<button type="button" class="chip" data-h="${h}" aria-pressed="false">${h}</button>`).join("")
+          : `<span class="pequeno suave">Sem horário livre neste dia. Escolha outro dia.</span>`;
+        $$("[data-h]", alvo).forEach((bt) => (bt.onclick = () => {
+          st.hora = bt.dataset.h; $$("[data-h]", alvo).forEach((o) => o.setAttribute("aria-pressed", String(o === bt))); resumo();
+        }));
+      } catch (err) { alvo.innerHTML = `<span class="pequeno suave">${esc(err.message)}</span>`; }
+    }
+    $$(".chips-linha[data-tipo]", m).forEach((g) => $$(".chip", g).forEach((bt) => (bt.onclick = () => {
+      const t = g.dataset.tipo, ja = st[t] === bt.dataset.id;
+      st[t] = ja ? null : bt.dataset.id;
+      $$(".chip", g).forEach((o) => o.setAttribute("aria-pressed", String(!ja && o === bt)));
+      resumo();
+    })));
+    $$("#ag-barbeiro .chip", m).forEach((bt) => (bt.onclick = () => {
+      st.barbeiro = bt.dataset.id || null;
+      $$("#ag-barbeiro .chip", m).forEach((o) => o.setAttribute("aria-pressed", String(o === bt)));
+      horas();
+    }));
+    $$("#ag-dias .chip", m).forEach((bt) => (bt.onclick = () => {
+      st.dia = bt.dataset.dia; $$("#ag-dias .chip", m).forEach((o) => o.setAttribute("aria-pressed", String(o === bt))); horas();
+    }));
+    horas();
+    if (await espera) { await carregar(); desenhar(); }
+  }
+  /* "2026-10-14" + "14:30" no fuso da barbearia → ISO em UTC */
+  function horaParaIso(dia, hora, fuso) {
+    const [y, mo, d] = dia.split("-").map(Number), [h, mi] = hora.split(":").map(Number);
+    const palpite = Date.UTC(y, mo - 1, d, h, mi);
+    const noFuso = new Date(new Date(palpite).toLocaleString("en-US", { timeZone: fuso }));
+    const utc = new Date(new Date(palpite).toLocaleString("en-US", { timeZone: "UTC" }));
+    return new Date(palpite + (utc - noFuso)).toISOString();
+  }
+
+  /* ---------- ver os cortes agendados, por dia ---------- */
+  async function verAgendados() {
+    try { await carregar(); } catch (e) { /* mostra o que tem */ }
+    const lista = dados.agendamentos.slice().sort((a, b) => new Date(a.agendado_para) - new Date(b.agendado_para));
+    const ver = dados.papel !== "associado";
+    const grupos = new Map();
+    lista.forEach((p) => {
+      const d = new Date(p.agendado_para), chave = d.toLocaleDateString("en-CA");
+      if (!grupos.has(chave)) grupos.set(chave, { rot: d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" }), itens: [] });
+      grupos.get(chave).itens.push(p);
+    });
+    const ro = A().leitura() ? " disabled" : "";
+    const fundo = U.modal("Cortes agendados", lista.length ? [...grupos.values()].map((g) => `<section class="ag-dia"><h3>${esc(g.rot)}</h3>
+        ${g.itens.map((p) => `<div class="ag-item" data-id="${p.id}">
+          <b class="ag-hora num">${esc(new Date(p.agendado_para).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }))}</b>
+          <div class="ag-info"><b>${esc(p.cliente_nome)}</b> ${zapLink(p.cliente_whatsapp)}
+            <div class="pequeno suave">${itensTxt(p)} · ${C.dinheiro(p.total)} · ${FORMAS[p.forma]}${ver ? " · com " + esc(nomeBarbeiro(p.barbeiro_id)) : ""}</div></div>
+          <button class="btn mini sec" data-cancelar${ro}>Cancelar</button></div>`).join("")}</section>`).join("")
+      : `<div class="vazio-cardapio">Nenhum corte agendado. Toque em <b>Agendar um corte</b> para marcar um horário.</div>`, [{ rotulo: "Fechar", valor: null }]);
+    const m = [...document.querySelectorAll(".modal-fundo")].pop();
+    m.classList.add("modal-comanda");
+    $$("[data-cancelar]", m).forEach((bt) => (bt.onclick = async () => {
+      const item = bt.closest(".ag-item");
+      if (!(await U.confirmar("Cancelar agendamento", "Cancelar este horário? Ele fica livre para outro cliente.", "Cancelar agendamento", true))) return;
+      try { await U.ocupado(bt, () => A().S.rpc("pedido_remover", { p_id: item.dataset.id })); item.remove(); U.aviso("Agendamento cancelado."); }
+      catch (err) { U.aviso(err.message, "erro"); }
+    }));
+    await fundo;
+    try { await carregar(); desenhar(); } catch (e) { /* */ }
   }
 
   /* ---------- avisos no celular ---------- */

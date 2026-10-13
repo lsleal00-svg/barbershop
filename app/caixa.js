@@ -5,7 +5,7 @@
   const { $, $$, esc } = U;
   const C = CARDAPIO;
   const A = () => window.APP;
-  const FORMAS = { pix: "Pix", dinheiro: "Dinheiro", prazo: "À prazo", misto: "Pix + Dinheiro" };
+  const FORMAS = { pix: "Pix", dinheiro: "Dinheiro", prazo: "À prazo", misto: "Várias formas", debito: "Débito", credito: "Crédito" };
   let d7 = null, secao = "cortes", corpoAtual = null, relatorio = { modo: "dia" };
 
   /* ---------- datas no relógio da barbearia ---------- */
@@ -24,14 +24,21 @@
   const contaTipo = (ps, t) => ps.reduce((s, p) => s + (p.itens || []).filter((i) => i.tipo === t).length, 0);
   const devendo = (ps) => ps.filter((p) => p.forma === "prazo" && !p.pago);
   const formaPaga = (p) => p.pago_forma || (p.forma === "prazo" ? "dinheiro" : p.forma);
-  /* Quanto entrou no Pix e quanto em dinheiro (no balcão dá para pagar com as duas). */
+  /* Quanto entrou em cada forma (uma venda pode ter dinheiro + Pix + cartão) e a taxa da maquininha. */
+  const listaPag = (p) => (Array.isArray(p.pagamentos) && p.pagamentos.length ? p.pagamentos
+    : formaPaga(p) === "misto" ? [{ f: "pix", v: p.pago_pix }, { f: "dinheiro", v: p.pago_dinheiro }] : [{ f: formaPaga(p), v: p.total }]);
   const partes = (p) => {
-    const f = formaPaga(p);
-    if (f === "misto") return { pix: Number(p.pago_pix || 0), din: Number(p.pago_dinheiro || 0) };
-    return f === "pix" ? { pix: Number(p.total), din: 0 } : { pix: 0, din: Number(p.total) };
+    const r = { pix: 0, din: 0, deb: 0, cred: 0 };
+    listaPag(p).forEach((x) => { r[{ pix: "pix", dinheiro: "din", debito: "deb", credito: "cred" }[x.f] || "din"] += Number(x.v || 0); });
+    return r;
   };
-  const somaPix = (ps) => ps.reduce((s, p) => s + partes(p).pix, 0);
-  const somaDin = (ps) => ps.reduce((s, p) => s + partes(p).din, 0);
+  const somaPor = (k) => (ps) => Math.round(ps.reduce((s, p) => s + partes(p)[k], 0) * 100) / 100;
+  const somaPix = somaPor("pix"), somaDin = somaPor("din"), somaDeb = somaPor("deb"), somaCred = somaPor("cred");
+  const somaCartao = (ps) => somaDeb(ps) + somaCred(ps);
+  const somaTaxa = (ps) => Math.round(ps.reduce((s, p) => s + Number(p.taxa_valor || 0), 0) * 100) / 100;
+  const liquido = (ps) => Math.round((soma(ps) - somaTaxa(ps)) * 100) / 100;
+  const textoPag = (p) => listaPag(p).length > 1 ? listaPag(p).map((x) => `${FORMAS[x.f] || x.f} ${C.dinheiro(x.v)}`).join(" + ") : FORMAS[formaPaga(p)];
+  const temCartao = () => d7 && (d7.aceita_debito || d7.aceita_credito);
 
   async function buscar(de, ate) { return A().S.rpc("caixa_dados", { p_de: de, p_ate: ate }); }
 
@@ -49,14 +56,16 @@
   function desenhar() {
     const corpo = corpoAtual;
     const hoje = d7.hoje, rec = recebidos(d7.pedidos, hoje, hoje);
-    const pix = somaPix(rec), din = somaDin(rec);
+    const pix = somaPix(rec), din = somaDin(rec), cart = somaCartao(rec), taxa = somaTaxa(rec);
     const SECOES = [["cortes", "Gráficos de corte"], ["produtos", "Gráficos de produtos"], ["relatorios", "Relatórios"], ["inadimplencia", `Inadimplência${devendo(d7.pedidos).length ? ` (${devendo(d7.pedidos).length})` : ""}`]];
     corpo.innerHTML = `
       <section class="cartao caixa-hoje" aria-label="Total do caixa hoje">
         <div class="rotulo-kpi">Total em caixa hoje · ${esc(diaSemana(hoje))} ${esc(br(hoje))}</div>
-        <div class="heroi">${C.dinheiro(pix + din)}</div>
+        <div class="heroi">${C.dinheiro(soma(rec))}</div>
         <div class="caixa-hoje-detalhe"><span>Pix <b>${C.dinheiro(pix)}</b></span><span>Dinheiro <b>${C.dinheiro(din)}</b></span>
+          ${cart || temCartao() ? `<span>Cartão <b>${C.dinheiro(cart)}</b></span>` : ""}
           <span>${rec.length} venda${rec.length === 1 ? "" : "s"}</span></div>
+        ${taxa ? `<div class="caixa-hoje-liquido"><span>Taxa da maquininha <b>−${C.dinheiro(taxa)}</b></span><span>Líquido <b>${C.dinheiro(soma(rec) - taxa)}</b></span></div>` : ""}
       </section>
       <div class="caixa-corpo">
         <nav class="caixa-menu" aria-label="Seções do caixa">${SECOES.map(([id, t]) => `<button data-sec="${id}" aria-current="${id === secao}">${t}</button>`).join("")}</nav>
@@ -92,7 +101,7 @@
       <span class="rk-nome">${esc(d.rot)}</span><span class="rk-trilho"><span class="rk-barra" style="width:${Math.max(2, (d.v / max) * 100)}%"></span></span>
       <span class="rk-valor">${esc(formatar(d.v))}</span></div>`).join("")}</div>`;
   }
-  const tabela = (cab, linhas) => `<div class="tabela-rolar"><table class="tabela"><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhas.map((l) => `<tr>${l.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  const tabela = (cab, linhas, classe) => `<div class="tabela-rolar"><table class="tabela${classe ? " " + classe : ""}"><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhas.map((l) => `<tr>${l.map((c, i) => `<td data-rot="${esc(String(cab[i] || "").replace(/<[^>]+>/g, ""))}">${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   function alternarTabela(raiz) {
     $$("[data-ver]", raiz).forEach((bt) => (bt.onclick = () => {
       const alvo = $("#" + bt.dataset.ver, raiz); const aberto = !alvo.classList.toggle("oculto");
@@ -104,20 +113,23 @@
   function secaoCortes(el) {
     const hoje = d7.hoje, de = somaDias(hoje, -6);
     const real = realizados(d7.pedidos, de, hoje), rec = recebidos(d7.pedidos, de, hoje).filter((p) => p.tipo === "servico");
-    const pix = somaPix(rec), din = somaDin(rec);
+    const pix = somaPix(rec), din = somaDin(rec), cart = somaCartao(rec), taxa = somaTaxa(rec);
     const aReceber = soma(devendo(d7.pedidos));
-    const dias = Array.from({ length: 7 }, (_, i) => somaDias(de, i)).map((d) => ({ dia: d, rot: `${diaSemana(d)} ${br(d)}`, curto: diaSemana(d), v: soma(rec.filter((p) => ymd(p.pago_em) === d)) }));
+    const dias = Array.from({ length: 7 }, (_, i) => somaDias(de, i)).map((d) => ({ dia: d, rot: `${diaSemana(d)} ${br(d)}`, curto: diaSemana(d), v: liquido(rec.filter((p) => ymd(p.pago_em) === d)) }));
     el.innerHTML = `<section class="cartao"><h2>Cortes · últimos 7 dias</h2><p class="pequeno suave">${esc(br(de))} a ${esc(br(hoje))}</p>
       <div class="kpis">
         ${tile("Cortes de cabelo realizados", contaTipo(real, "cabelo"))}
         ${tile("Barbas realizadas", contaTipo(real, "barba"))}
         ${tile("Recebido em Pix", C.dinheiro(pix))}
         ${tile("Recebido em dinheiro", C.dinheiro(din))}
+        ${cart || temCartao() ? tile("Recebido em cartão", C.dinheiro(cart), `débito ${C.dinheiro(somaDeb(rec))} · crédito ${C.dinheiro(somaCred(rec))}`) : ""}
+        ${taxa ? tile("Taxa da maquininha", "−" + C.dinheiro(taxa), "descontada pelo banco") : ""}
         ${tile("Cortes à prazo", real.filter((p) => p.forma === "prazo").length)}
-        ${tile("Total geral (Pix + dinheiro)", C.dinheiro(pix + din), "inclui à prazo já pagos")}
+        ${tile("Total geral", C.dinheiro(soma(rec)), "inclui à prazo já pagos")}
+        ${taxa ? tile("Total líquido", C.dinheiro(soma(rec) - taxa), "já sem a taxa do cartão") : ""}
         ${tile("A receber (à prazo)", C.dinheiro(aReceber), "todos os em aberto")}
       </div>
-      <h3 style="margin-top:1rem">Recebido com cortes por dia</h3>
+      <h3 style="margin-top:1rem">Recebido com cortes por dia${taxa ? " (líquido, já sem a taxa do cartão)" : ""}</h3>
       ${colunas(dias, C.dinheiro)}
       <button class="link" data-ver="tab-cortes">Ver números</button>
       <div id="tab-cortes" class="oculto">${tabela(["Dia", "Recebido"], dias.map((d) => [esc(d.rot), C.dinheiro(d.v)]))}</div></section>`;
@@ -137,7 +149,8 @@
     const vendas = recebidos(d7.pedidos, de, hoje).filter((p) => p.tipo === "produto");
     const lista = agruparProdutos(vendas), total = soma(vendas);
     el.innerHTML = `<section class="cartao"><h2>Produtos · últimos 7 dias</h2><p class="pequeno suave">${esc(br(de))} a ${esc(br(hoje))}</p>
-      <div class="kpis">${tile("Valor total com produtos", C.dinheiro(total))}${tile("Unidades vendidas", lista.reduce((s, x) => s + x.qtd, 0))}</div>
+      <div class="kpis">${tile("Valor total com produtos", C.dinheiro(total))}${tile("Unidades vendidas", lista.reduce((s, x) => s + x.qtd, 0))}
+        ${somaTaxa(vendas) ? tile("Líquido (sem a taxa do cartão)", C.dinheiro(liquido(vendas))) : ""}</div>
       ${lista.length ? `<h3 style="margin-top:1rem">Mais vendidos (quantidade)</h3>${barras(lista.slice(0, 10).map((x) => ({ rot: x.rot, v: x.qtd })), (v) => v + " un.")}
         <h3 style="margin-top:1rem">Vendidos no período</h3>${tabela(["Produto", "Quantidade", "Valor"], lista.map((x) => [esc(x.rot), x.qtd, C.dinheiro(x.valor)]))}`
         : `<p class="suave pequeno" style="margin-top:1rem">Nenhum produto vendido nos últimos 7 dias.</p>`}</section>`;
@@ -183,19 +196,32 @@
     const cortes = vendas.filter((p) => p.tipo === "servico"), prods = vendas.filter((p) => p.tipo === "produto");
     const real = realizados(dados.pedidos, de, ate);
     const titulo = relatorio.modo === "dia" ? `Vendas de ${br(de)}` : relatorio.modo === "mes" ? `Vendas de ${de.slice(5, 7)}/${de.slice(0, 4)}` : `Vendas de ${br(de)} a ${br(ate)}`;
-    const linhas = vendas.map((p) => [
-      relatorio.modo === "dia" ? hora(p.pago_em) : `${br(ymd(p.pago_em)).slice(0, 5)} ${hora(p.pago_em)}`,
-      esc(p.cliente_nome), p.tipo === "produto" ? "Produto" : "Corte",
-      (p.itens || []).map((i) => `${i.qtd > 1 ? i.qtd + "× " : ""}${esc(i.nome)}`).join(", "),
-      (formaPaga(p) === "misto" ? `Pix ${C.dinheiro(partes(p).pix)} + Dinheiro ${C.dinheiro(partes(p).din)}` : FORMAS[formaPaga(p)]) + (p.forma === "prazo" ? " (à prazo)" : "") + (p.origem === "balcao" ? " · balcão" : ""), C.dinheiro(p.total)]);
-    const resumo = { titulo, de, ate, vendas, cortes, prods, real, linhas, pix: somaPix(vendas), din: somaDin(vendas) };
+    const quandoTxt = (p) => relatorio.modo === "dia" ? hora(p.pago_em) : `${br(ymd(p.pago_em)).slice(0, 5)} ${hora(p.pago_em)}`;
+    const itensTxt = (p) => (p.itens || []).map((i) => `${i.qtd > 1 ? i.qtd + "× " : ""}${esc(i.nome)}`).join(", ");
+    const extrasPag = (p) => [p.forma === "prazo" ? "à prazo" : "", p.origem === "balcao" ? "balcão" : ""].filter(Boolean).join(" · ");
+    // PDF: uma linha de texto por venda
+    const linhas = vendas.map((p) => [quandoTxt(p), esc(p.cliente_nome), p.tipo === "produto" ? "Produto" : "Corte", itensTxt(p),
+      textoPag(p) + (extrasPag(p) ? " · " + extrasPag(p) : "") + (Number(p.taxa_valor) ? ` · taxa −${C.dinheiro(p.taxa_valor)}` : ""), C.dinheiro(p.total)]);
+    // tela: cada forma numa linha (valor junto da forma), taxa à parte
+    const pagHtml = (p) => `${listaPag(p).map((x) => `<span class="rel-parte">${FORMAS[x.f] || esc(x.f)} ${C.dinheiro(x.v)}</span>`).join("")}${
+      extrasPag(p) ? `<span class="rel-extra">${esc(extrasPag(p))}</span>` : ""}${Number(p.taxa_valor) ? `<span class="rel-extra">taxa −${C.dinheiro(p.taxa_valor)}</span>` : ""}`;
+    const linhasTela = vendas.map((p) => [quandoTxt(p), `${esc(p.cliente_nome)}${p.tipo === "produto" ? ` <span class="selo">Produto</span>` : ""}`,
+      itensTxt(p), pagHtml(p), C.dinheiro(p.total),
+      `<button class="btn mini sec btn-excluir" data-excluir="${p.id}" aria-label="Excluir venda de ${esc(p.cliente_nome)}">${U.icone("lixeira")}Excluir</button>`]);
+    const resumo = { titulo, de, ate, vendas, cortes, prods, real, linhas, pix: somaPix(vendas), din: somaDin(vendas), deb: somaDeb(vendas), cred: somaCred(vendas), taxa: somaTaxa(vendas) };
     saida.innerHTML = `<h3 style="margin-top:1rem">${esc(titulo)}</h3>
       <div class="kpis">${tile("Cortes", C.dinheiro(soma(cortes)), `${cortes.length} recebimento(s)`)}${tile("Produtos", C.dinheiro(soma(prods)), `${prods.length} venda(s)`)}
-        ${tile("Pix", C.dinheiro(resumo.pix))}${tile("Dinheiro", C.dinheiro(resumo.din))}${tile("Total geral", C.dinheiro(soma(vendas)))}</div>
+        ${tile("Pix", C.dinheiro(resumo.pix))}${tile("Dinheiro", C.dinheiro(resumo.din))}
+        ${resumo.deb + resumo.cred || dados.aceita_debito || dados.aceita_credito ? tile("Cartão", C.dinheiro(resumo.deb + resumo.cred), `débito ${C.dinheiro(resumo.deb)} · crédito ${C.dinheiro(resumo.cred)}`) : ""}
+        ${resumo.taxa ? tile("Taxa da maquininha", "−" + C.dinheiro(resumo.taxa), "descontada pelo banco") : ""}</div>
+      <div class="total-banda${resumo.taxa ? " com-taxa" : ""}">${resumo.taxa
+        ? `${tile("Total líquido", C.dinheiro(soma(vendas) - resumo.taxa), "já sem a taxa do cartão")}${tile("Total geral", C.dinheiro(soma(vendas)), "antes da taxa")}`
+        : tile("Total geral", C.dinheiro(soma(vendas)))}</div>
       <p class="pequeno suave">Cortes realizados no período: <b>${real.length}</b> (${contaTipo(real, "cabelo")} de cabelo, ${contaTipo(real, "barba")} de barba). À prazo pago entra no dia em que foi pago.</p>
-      ${vendas.length ? tabela(["Quando", "Cliente", "Tipo", "Itens", "Pagamento", "Valor"], linhas) : `<p class="suave pequeno">Nenhuma venda no período.</p>`}
+      ${vendas.length ? tabela(["Quando", "Cliente", "Itens", "Pagamento", "Valor", ""], linhasTela, "tabela-vendas") : `<p class="suave pequeno">Nenhuma venda no período.</p>`}
       <div class="linha-acoes"><button class="btn sec" id="r-pdf"${vendas.length ? "" : " disabled"}>Baixar PDF</button></div>`;
     $("#r-pdf", el).onclick = () => pdf(resumo);
+    $$("[data-excluir]", saida).forEach((bt) => (bt.onclick = () => excluirVenda(vendas.find((p) => p.id === bt.dataset.excluir), el)));
   }
   function pdf(r) {
     const { jsPDF } = window.jspdf;
@@ -204,10 +230,10 @@
     doc.setFont("helvetica", "bold"); doc.setFontSize(16); doc.text(A().b().nome, 14, 18);
     doc.setFontSize(12); doc.text(r.titulo, 14, 26);
     doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-    doc.text(`Cortes: ${C.dinheiro(soma(r.cortes))}   Produtos: ${C.dinheiro(soma(r.prods))}   Pix: ${C.dinheiro(r.pix)}   Dinheiro: ${C.dinheiro(r.din)}`, 14, 34);
-    doc.setFont("helvetica", "bold"); doc.text(`Total geral: ${C.dinheiro(soma(r.vendas))}`, 14, 40);
-    doc.setFont("helvetica", "normal"); doc.text(`Cortes realizados: ${r.real.length}`, 120, 40);
-    let y = 50;
+    doc.text(`Cortes: ${C.dinheiro(soma(r.cortes))}   Produtos: ${C.dinheiro(soma(r.prods))}   Pix: ${C.dinheiro(r.pix)}   Dinheiro: ${C.dinheiro(r.din)}   Cartão: ${C.dinheiro(r.deb + r.cred)}`, 14, 34);
+    doc.setFont("helvetica", "bold"); doc.text(`Total geral: ${C.dinheiro(soma(r.vendas))}${r.taxa ? `   Taxa da maquininha: -${C.dinheiro(r.taxa)}   Líquido: ${C.dinheiro(soma(r.vendas) - r.taxa)}` : ""}`, 14, 40);
+    doc.setFont("helvetica", "normal"); doc.text(`Cortes realizados: ${r.real.length}`, r.taxa ? 14 : 120, r.taxa ? 46 : 40);
+    let y = r.taxa ? 56 : 50;
     const cols = [14, 40, 80, 100, 160, 196];
     const cab = ["Quando", "Cliente", "Tipo", "Itens", "Pagamento", "Valor"];
     const desenharCab = () => { doc.setFont("helvetica", "bold"); cab.forEach((c, i) => doc.text(c, i === 5 ? cols[5] : cols[i], y, i === 5 ? { align: "right" } : undefined)); doc.setFont("helvetica", "normal"); y += 2; linha(y); y += 5; };
@@ -221,6 +247,19 @@
       y += Math.max(6, itens.length * 4.5);
     });
     doc.save(`relatorio-${A().b().slug}-${r.de}${r.ate !== r.de ? "-a-" + r.ate : ""}.pdf`);
+  }
+
+  async function excluirVenda(p, el) {
+    if (!p) return;
+    const ok = await U.confirmar("Excluir venda", `Excluir a venda de <b>${esc(p.cliente_nome)}</b> (${C.dinheiro(p.total)} · ${(p.itens || []).map((i) => esc(i.nome)).join(", ")})?<br>Ela sai do caixa, dos gráficos e dos relatórios. Não dá para desfazer.`, "Excluir venda", true);
+    if (!ok) return;
+    try {
+      await A().S.rpc("venda_excluir", { p_id: p.id });
+      U.aviso("Venda excluída.");
+      const hojeLocal = new Date().toLocaleDateString("en-CA", { timeZone: fuso() });
+      d7 = await buscar(somaDias(hojeLocal, -6), hojeLocal);
+      desenhar();
+    } catch (err) { U.aviso(err.message, "erro"); }
   }
 
   /* ---------- inadimplência ---------- */
@@ -254,14 +293,11 @@
     U.whatsapp(msg, p.cliente_whatsapp);
   }
   async function pagar(p) {
-    const forma = await U.modal("Pagamento recebido", `<p><b>${esc(p.cliente_nome)}</b> pagou <b>${C.dinheiro(p.total)}</b>. Como foi pago?</p>`, [
-      { rotulo: "Cancelar", classe: "sec", valor: null }, { rotulo: "Dinheiro", classe: "sec", valor: "dinheiro" }, { rotulo: "Pix", valor: "pix" },
-    ]);
-    if (!forma) return;
-    if (forma === "dinheiro" && !(await window.BALCAO.troco(Number(p.total), "Receber em dinheiro", `<b>${esc(p.cliente_nome)}</b> está pagando o que devia.`))) return;
+    const r = await window.BALCAO.receberPedido(Number(p.total), "Pagamento recebido", `<b>${esc(p.cliente_nome)}</b> está pagando o que devia. Como foi pago?`, window.BALCAO.cfgDaBarbearia(A().b()));
+    if (!r) return;
     try {
-      await A().S.rpc("pagamento_confirmar", { p_id: p.id, p_forma: forma });
-      U.aviso("Pagamento registrado no caixa de hoje.");
+      await A().S.rpc("pedido_pagar", { p_id: p.id, p_pagamentos: r.pagamentos });
+      U.aviso(`Pagamento registrado no caixa de hoje${r.troco ? ` · troco ${C.dinheiro(r.troco)}` : ""}.`);
       await tela(corpoAtual);
     } catch (err) { U.aviso(err.message, "erro"); }
   }
