@@ -21,7 +21,7 @@
   const recebidos = (ps, de, ate) => ps.filter((p) => p.pago && p.pago_em && ymd(p.pago_em) >= de && ymd(p.pago_em) <= ate);
   const realizados = (ps, de, ate) => ps.filter((p) => p.tipo === "servico" && p.finalizado_em && ymd(p.finalizado_em) >= de && ymd(p.finalizado_em) <= ate);
   const soma = (ps) => ps.reduce((s, p) => s + Number(p.total), 0);
-  const contaTipo = (ps, t) => ps.reduce((s, p) => s + (p.itens || []).filter((i) => i.tipo === t).length, 0);
+  const contaTipo = (ps, t) => ps.reduce((s, p) => s + (p.itens || []).filter((i) => i.tipo === t).reduce((n, i) => n + Number(i.qtd || 1), 0), 0);
   const devendo = (ps) => ps.filter((p) => p.forma === "prazo" && !p.pago);
   const formaPaga = (p) => p.pago_forma || (p.forma === "prazo" ? "dinheiro" : p.forma);
   /* Quanto entrou em cada forma (uma venda pode ter dinheiro + Pix + cartão) e a taxa da maquininha. */
