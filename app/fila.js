@@ -147,80 +147,184 @@
       ]);
     } catch (err) { return U.aviso(err.message, "erro"); }
     const tipo = (it) => (cats.find((c) => c.id === it.categoria_id) || {}).tipo;
-    const cabelos = itens.filter((i) => tipo(i) === "cabelo"), barbas = itens.filter((i) => tipo(i) === "barba");
-    if (!cabelos.length && !barbas.length) return U.aviso("Cadastre os cortes em Serviços & Produtos antes de agendar.", "erro");
+    const servicos = itens.filter((i) => tipo(i) && !C.ehProduto(tipo(i)));
+    if (!servicos.length) return U.aviso("Cadastre os serviços em Serviços & Produtos antes de agendar.", "erro");
     const fuso = cfg.fuso || "America/Sao_Paulo";
     const barbeiros = cfg.barbeiros || [];
-    const st = { cabelo: null, barba: null, barbeiro: cfg.papel === "associado" ? cfg.equipe_id : (barbeiros[0] ? barbeiros[0].id : null), dia: cfg.hoje, hora: null };
-    const dias = Array.from({ length: 21 }, (_, i) => { const d = new Date(Date.now() + i * 86400000); return ymdNoFuso(d, fuso); });
+    const st = { esc: new Map(), q: "", barbeiro: cfg.papel === "associado" ? cfg.equipe_id : (barbeiros[0] ? barbeiros[0].id : null),
+      dia: cfg.hoje, h: 9, mi: 0, agenda: null };
+    const dias = Array.from({ length: 21 }, (_, i) => ymdNoFuso(new Date(Date.now() + i * 86400000), fuso));
     const rotDia = (y, i) => i === 0 ? "Hoje" : i === 1 ? "Amanhã" : new Date(y + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
-    const chipsItens = (lista, t) => lista.length ? `<fieldset class="grupo"><legend>${t === "cabelo" ? "Corte de cabelo" : "Barba"}</legend>
-      <div class="chips-linha" data-tipo="${t}">${lista.map((it) => `<button type="button" class="chip" data-id="${it.id}" aria-pressed="false">${esc(it.nome)} · ${C.dinheiro(C.final(it))}</button>`).join("")}</div></fieldset>` : "";
+    const HORAS = Array.from({ length: 24 }, (_, i) => i), MINUTOS = Array.from({ length: 12 }, (_, i) => i * 5);
+    const dd = (n) => String(n).padStart(2, "0");
+    const roda = (id, valores, rot) => `<div class="roda" id="${id}" tabindex="0" role="listbox" aria-label="${rot}">
+      <div class="roda-pad"></div>${valores.map((v) => `<div class="roda-op" role="option" data-v="${v}">${dd(v)}</div>`).join("")}<div class="roda-pad"></div></div>`;
+
     const espera = U.modal("Agendar um corte", `
       <div class="campo"><label for="ag-nome">Nome do cliente</label><input id="ag-nome" maxlength="60" autocomplete="off"></div>
       <div class="campo"><label for="ag-zap">WhatsApp com DDD (opcional)</label><input id="ag-zap" type="tel" inputmode="tel" placeholder="(91) 98888-7777" autocomplete="off"></div>
       ${cfg.papel !== "associado" && barbeiros.length > 1 ? `<fieldset class="grupo"><legend>Barbeiro</legend><div class="chips-linha" id="ag-barbeiro">${barbeiros.map((br) =>
         `<button type="button" class="chip" data-id="${br.id || ""}" aria-pressed="${(br.id || null) === st.barbeiro}">${esc(br.nome)}</button>`).join("")}</div></fieldset>` : ""}
-      ${chipsItens(cabelos, "cabelo")}${chipsItens(barbas, "barba")}
+      <fieldset class="grupo"><legend class="legenda-com-info">Serviços <span class="pequeno suave" id="ag-n">Nenhum escolhido</span></legend>
+        <input id="ag-busca" type="search" placeholder="Buscar serviço…" aria-label="Buscar serviço" autocomplete="off">
+        <div class="lista-rolagem ag-servicos" id="ag-servicos"></div></fieldset>
       <fieldset class="grupo"><legend>Dia</legend><div class="dias-chips" id="ag-dias">${dias.map((d, i) => `<button type="button" class="chip" data-dia="${d}" aria-pressed="${d === st.dia}">${rotDia(d, i)}</button>`).join("")}</div></fieldset>
-      <fieldset class="grupo"><legend>Horário</legend><div id="ag-horas" class="slots"></div></fieldset>
+      <fieldset class="grupo"><legend class="legenda-com-info">Horário <button type="button" class="link ag-ver" id="ag-ver">${U.icone("calendario")}Ver agendamentos</button></legend>
+        <div class="relogio">
+          <div class="rodas">${roda("ag-h", HORAS, "Hora")}<span class="rodas-sep" aria-hidden="true">:</span>${roda("ag-m", MINUTOS, "Minutos")}<div class="rodas-faixa" aria-hidden="true"></div></div>
+          <div class="relogio-info"><b class="relogio-hora num" id="ag-hora-txt">--:--</b><div class="ag-estado" id="ag-estado" role="status"></div>
+            <div class="pequeno suave" id="ag-expediente"></div></div>
+        </div>
+        <div class="ag-marcados" id="ag-marcados"></div></fieldset>
       <div class="ag-resumo" id="ag-resumo"></div>
-      <p class="pequeno suave">O cliente paga na hora do corte: quando terminar, toque em <b>Corte finalizado</b> e informe como ele pagou.</p>`, [
+      <p class="pequeno suave">O cliente paga na hora: quando terminar, toque em <b>Corte finalizado</b> e informe como ele pagou.</p>`, [
       { rotulo: "Cancelar", classe: "sec", valor: false },
       { rotulo: "Agendar", valor: true, antes: async (m) => {
         const nome = $("#ag-nome", m).value.trim();
         if (nome.length < 2) { U.aviso("Digite o nome do cliente.", "erro"); return false; }
-        if (!st.cabelo && !st.barba) { U.aviso("Escolha o corte (ou a barba).", "erro"); return false; }
-        if (!st.hora) { U.aviso("Escolha o horário.", "erro"); return false; }
-        const quando = horaParaIso(st.dia, st.hora, fuso);
-        await S.rpc("agenda_criar", { p_itens: [st.cabelo, st.barba].filter(Boolean).map((id) => ({ id })), p_barbeiro: st.barbeiro || null,
-          p_nome: nome, p_whatsapp: $("#ag-zap", m).value, p_agendado_para: quando });
-        U.aviso(`Agendado: ${nome} · ${new Date(quando).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: fuso })}.`);
+        if (!st.esc.size) { U.aviso("Escolha pelo menos um serviço.", "erro"); return false; }
+        const e = estado();
+        if (e.tipo === "erro") { U.aviso(e.msg, "erro"); return false; }
+        let forcar = false;
+        if (e.tipo === "fora") {
+          forcar = await U.confirmar("Fora do horário de funcionamento", `<b>${esc(horaTxt())}</b> está fora do horário de funcionamento${e.exp ? ` (${esc(e.exp)})` : ""}.<br>Quer agendar mesmo assim?`, "Agendar mesmo assim");
+          if (!forcar) return false;
+        }
+        const quandoIso = horaParaIso(st.dia, horaTxt(), fuso);
+        try {
+          await S.rpc("agenda_criar", { p_itens: [...st.esc].map(([id, qtd]) => ({ id, qtd })), p_barbeiro: st.barbeiro || null,
+            p_nome: nome, p_whatsapp: $("#ag-zap", m).value, p_agendado_para: quandoIso, p_forcar: forcar });
+        } catch (err) { await carregarAgenda(); throw new Error(String(err.message).replace(/^FORA_DO_EXPEDIENTE:\s*/, "")); }
+        if (window.CLIENTES) window.CLIENTES.esquecer();
+        U.aviso(`Agendado: ${nome} · ${new Date(quandoIso).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: fuso })}.`);
         return true;
       } },
     ]);
     const m = [...document.querySelectorAll(".modal-fundo")].pop();
-    m.classList.add("modal-comanda");
-    const resumo = () => {
-      const sel = [st.cabelo, st.barba].filter(Boolean).map((id) => itens.find((i) => i.id === id));
-      const total = sel.reduce((s2, it) => s2 + C.final(it), 0);
-      $("#ag-resumo", m).innerHTML = sel.length ? `<div class="total-receber"><span>${sel.map((i) => esc(i.nome)).join(" + ")}${st.hora ? ` · ${esc(st.hora)}` : ""}</span><b class="num">${C.dinheiro(total)}</b></div>` : "";
-    };
-    async function horas() {
-      const alvo = $("#ag-horas", m);
-      st.hora = null; resumo();
-      alvo.innerHTML = `<span class="pequeno suave">Carregando horários…</span>`;
-      try {
-        const r = await S.rpc("horarios_livres", { p_barbearia: bid, p_barbeiro: st.barbeiro || null, p_data: st.dia });
-        if (r && r.livre) {
-          alvo.innerHTML = `<input type="time" id="ag-hora-livre" step="300" aria-label="Horário">`;
-          $("#ag-hora-livre", m).onchange = (e) => { st.hora = e.target.value || null; resumo(); };
-          return;
-        }
-        const agora = new Date();
-        const slots = ((r && r.slots) || []).filter((h) => new Date(horaParaIso(st.dia, h, fuso)) > new Date(agora.getTime() + 5 * 60000));
-        alvo.innerHTML = slots.length ? slots.map((h) => `<button type="button" class="chip" data-h="${h}" aria-pressed="false">${h}</button>`).join("")
-          : `<span class="pequeno suave">Sem horário livre neste dia. Escolha outro dia.</span>`;
-        $$("[data-h]", alvo).forEach((bt) => (bt.onclick = () => {
-          st.hora = bt.dataset.h; $$("[data-h]", alvo).forEach((o) => o.setAttribute("aria-pressed", String(o === bt))); resumo();
-        }));
-      } catch (err) { alvo.innerHTML = `<span class="pequeno suave">${esc(err.message)}</span>`; }
+    m.classList.add("modal-comanda", "modal-agendar");
+    if (window.CLIENTES) window.CLIENTES.ligar(m, "#ag-nome", "#ag-zap");
+
+    const horaTxt = () => `${dd(st.h)}:${dd(st.mi)}`;
+    const minDia = () => st.h * 60 + st.mi;
+    const paraMin = (t) => { const [a, b] = String(t).split(":").map(Number); return a * 60 + b; };
+    const expTxt = (d) => !d || !d.abre ? "fechado neste dia" : d.almoco_ini && d.almoco_fim ? `${d.abre}–${d.almoco_ini} e ${d.almoco_fim}–${d.fecha}` : `${d.abre}–${d.fecha}`;
+    const dentro = (d, x) => !!(d && d.abre && d.fecha) && (d.almoco_ini && d.almoco_fim
+      ? (x >= paraMin(d.abre) && x < paraMin(d.almoco_ini)) || (x >= paraMin(d.almoco_fim) && x < paraMin(d.fecha))
+      : x >= paraMin(d.abre) && x < paraMin(d.fecha));
+    const horaLocal = (iso) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: fuso });
+
+    /* situação do horário escolhido: livre, ocupado (mesmo minuto ou fila) ou fora do expediente */
+    function estado() {
+      const a = st.agenda;
+      if (!a) return { tipo: "carregando", msg: "Conferindo a agenda…" };
+      const ts = new Date(horaParaIso(st.dia, horaTxt(), fuso));
+      if (ts.getTime() < Math.floor(Date.now() / 60000) * 60000) return { tipo: "erro", msg: "Esse horário já passou. Escolha outro." };
+      const outro = (a.agendados || []).find((x) => x.hora === horaTxt());
+      if (outro) return { tipo: "erro", msg: `Horário não disponível: ${outro.nome} já está agendado(a) às ${outro.hora}.` };
+      if (a.fila_ate && ts < new Date(a.fila_ate)) return { tipo: "erro", msg: `Horário não disponível: tem ${a.fila_n} pessoa${a.fila_n > 1 ? "s" : ""} na fila esperando (previsão até ${horaLocal(a.fila_ate)}).` };
+      if (a.tem_horario && !dentro(a.expediente, minDia())) return { tipo: "fora", exp: expTxt(a.expediente), msg: `Fora do horário de funcionamento (${expTxt(a.expediente)}). Dá para agendar mesmo assim.` };
+      return { tipo: "ok", msg: "Horário livre" };
     }
-    $$(".chips-linha[data-tipo]", m).forEach((g) => $$(".chip", g).forEach((bt) => (bt.onclick = () => {
-      const t = g.dataset.tipo, ja = st[t] === bt.dataset.id;
-      st[t] = ja ? null : bt.dataset.id;
-      $$(".chip", g).forEach((o) => o.setAttribute("aria-pressed", String(!ja && o === bt)));
+    function pintarEstado() {
+      $("#ag-hora-txt", m).textContent = horaTxt();
+      const e = estado(), el = $("#ag-estado", m);
+      el.className = "ag-estado " + e.tipo;
+      el.innerHTML = `${e.tipo === "ok" ? "✓ " : e.tipo === "erro" ? "✕ " : e.tipo === "fora" ? "! " : ""}${esc(e.msg)}`;
       resumo();
-    })));
+    }
+    async function carregarAgenda() {
+      st.agenda = null; pintarEstado();
+      try { st.agenda = await S.rpc("agenda_dia", { p_barbeiro: st.barbeiro || null, p_dia: st.dia }); }
+      catch (err) { $("#ag-estado", m).textContent = err.message; return; }
+      const a = st.agenda;
+      $("#ag-expediente", m).textContent = a.tem_horario ? `Funcionamento: ${expTxt(a.expediente)}` : "";
+      $("#ag-marcados", m).innerHTML = (a.agendados || []).length
+        ? `<span class="pequeno suave">Já marcados neste dia:</span> ${a.agendados.map((x) => `<button type="button" class="chip mini-chip" data-hora="${x.hora}">${esc(x.hora)} · ${esc(x.nome.split(" ")[0])}</button>`).join("")}`
+        : `<span class="pequeno suave">Nenhum agendamento neste dia${a.fila_n ? ` · ${a.fila_n} na fila agora` : ""}.</span>`;
+      $$("[data-hora]", m).forEach((bt) => (bt.onclick = () => { const [h, mi] = bt.dataset.hora.split(":").map(Number); irPara(h, mi - (mi % 5)); }));
+      pintarEstado();
+    }
+
+    /* ---------- rodinhas ---------- */
+    const ALT = 40;
+    const rodaH = $("#ag-h", m), rodaM = $("#ag-m", m);
+    function marcar(rodaEl, v) { $$(".roda-op", rodaEl).forEach((o) => o.classList.toggle("sel", Number(o.dataset.v) === v)); }
+    function irPara(h, mi, suave) {
+      st.h = h; st.mi = mi;
+      rodaH.scrollTo({ top: HORAS.indexOf(h) * ALT, behavior: suave === false ? "auto" : "smooth" });
+      rodaM.scrollTo({ top: MINUTOS.indexOf(mi) * ALT, behavior: suave === false ? "auto" : "smooth" });
+      marcar(rodaH, h); marcar(rodaM, mi); pintarEstado();
+    }
+    function ligarRoda(rodaEl, valores, campo) {
+      let t = null;
+      rodaEl.addEventListener("scroll", () => {
+        const i = Math.max(0, Math.min(valores.length - 1, Math.round(rodaEl.scrollTop / ALT)));
+        if (st[campo] !== valores[i]) { st[campo] = valores[i]; marcar(rodaEl, valores[i]); pintarEstado(); }
+        clearTimeout(t); t = setTimeout(() => { if (Math.abs(rodaEl.scrollTop - i * ALT) > 1) rodaEl.scrollTo({ top: i * ALT, behavior: "smooth" }); }, 120);
+      }, { passive: true });
+      $$(".roda-op", rodaEl).forEach((o) => (o.onclick = () => rodaEl.scrollTo({ top: valores.indexOf(Number(o.dataset.v)) * ALT, behavior: "smooth" })));
+      rodaEl.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+        e.preventDefault();
+        const i = valores.indexOf(st[campo]) + (e.key === "ArrowDown" ? 1 : -1);
+        if (i >= 0 && i < valores.length) rodaEl.scrollTo({ top: i * ALT, behavior: "smooth" });
+      });
+    }
+    ligarRoda(rodaH, HORAS, "h"); ligarRoda(rodaM, MINUTOS, "mi");
+    function horaInicial() {
+      if (st.dia === cfg.hoje) {
+        const agora = new Date(Date.now() + 10 * 60000);
+        const [h, mi] = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: fuso }).split(":").map(Number);
+        const t = Math.ceil((h * 60 + mi) / 5) * 5;
+        return t >= 24 * 60 ? [23, 55] : [Math.floor(t / 60), t % 60];
+      }
+      const d = A().b().horarios && A().b().horarios[String(new Date(st.dia + "T12:00:00").getDay())];
+      return d && d.abre ? [Number(d.abre.slice(0, 2)), Number(d.abre.slice(3, 5)) - (Number(d.abre.slice(3, 5)) % 5)] : [9, 0];
+    }
+
+    /* ---------- serviços com busca e quantidade ---------- */
+    const norm = (x) => String(x || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    function pintarServicos() {
+      const alvo = $("#ag-servicos", m), topo = alvo.scrollTop;
+      const l = servicos.filter((i) => !st.q || norm(i.nome).includes(norm(st.q)));
+      alvo.innerHTML = l.length ? l.map((it) => {
+        const q = st.esc.get(it.id) || 0;
+        return `<div class="ag-serv${q ? " escolhido" : ""}" data-id="${it.id}"><span class="ag-serv-nome"><b>${esc(it.nome)}</b><small>${C.dinheiro(C.final(it))}</small></span>
+          ${q ? `<div class="qtd"><button type="button" class="btn mini sec" data-d="-1" aria-label="Menos">−</button><b class="num">${q}</b><button type="button" class="btn mini sec" data-d="1" aria-label="Mais">+</button></div>`
+            : `<button type="button" class="btn mini sec" data-d="1">Escolher</button>`}</div>`;
+      }).join("") : `<p class="suave pequeno" style="padding:.6rem">Nenhum serviço com esse nome.</p>`;
+      alvo.scrollTop = topo;
+      const n = [...st.esc.values()].reduce((a, b) => a + b, 0);
+      $("#ag-n", m).textContent = n ? `${n} escolhido${n > 1 ? "s" : ""}` : "Nenhum escolhido";
+      $$("[data-d]", alvo).forEach((bt) => (bt.onclick = () => {
+        const id = bt.closest(".ag-serv").dataset.id, q = Math.min(10, (st.esc.get(id) || 0) + Number(bt.dataset.d));
+        if (q > 0) st.esc.set(id, q); else st.esc.delete(id);
+        pintarServicos(); resumo();
+      }));
+    }
+    $("#ag-busca", m).oninput = (e) => { st.q = e.target.value; pintarServicos(); };
+
+    const resumo = () => {
+      const sel = [...st.esc].map(([id, q]) => ({ it: itens.find((i) => i.id === id), q })).filter((x) => x.it);
+      const total = sel.reduce((s2, x) => s2 + C.final(x.it) * x.q, 0);
+      $("#ag-resumo", m).innerHTML = sel.length ? `<div class="total-receber"><span>${sel.map((x) => (x.q > 1 ? x.q + " × " : "") + esc(x.it.nome)).join(" + ")} · ${esc(horaTxt())}</span><b class="num">${C.dinheiro(total)}</b></div>` : "";
+    };
+
     $$("#ag-barbeiro .chip", m).forEach((bt) => (bt.onclick = () => {
       st.barbeiro = bt.dataset.id || null;
       $$("#ag-barbeiro .chip", m).forEach((o) => o.setAttribute("aria-pressed", String(o === bt)));
-      horas();
+      carregarAgenda();
     }));
     $$("#ag-dias .chip", m).forEach((bt) => (bt.onclick = () => {
-      st.dia = bt.dataset.dia; $$("#ag-dias .chip", m).forEach((o) => o.setAttribute("aria-pressed", String(o === bt))); horas();
+      st.dia = bt.dataset.dia; $$("#ag-dias .chip", m).forEach((o) => o.setAttribute("aria-pressed", String(o === bt)));
+      const [h, mi] = horaInicial(); irPara(h, mi); carregarAgenda();
     }));
-    horas();
+    $("#ag-ver", m).onclick = async () => { await verAgendados(); carregarAgenda(); };
+
+    pintarServicos();
+    const [h0, m0] = horaInicial();
+    requestAnimationFrame(() => irPara(h0, m0, false));
+    carregarAgenda();
     if (await espera) { await carregar(); desenhar(); }
   }
   /* "2026-10-14" + "14:30" no fuso da barbearia → ISO em UTC */

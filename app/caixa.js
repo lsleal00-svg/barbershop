@@ -21,7 +21,8 @@
   const recebidos = (ps, de, ate) => ps.filter((p) => p.pago && p.pago_em && ymd(p.pago_em) >= de && ymd(p.pago_em) <= ate);
   const realizados = (ps, de, ate) => ps.filter((p) => p.tipo === "servico" && p.finalizado_em && ymd(p.finalizado_em) >= de && ymd(p.finalizado_em) <= ate);
   const soma = (ps) => ps.reduce((s, p) => s + Number(p.total), 0);
-  const contaTipo = (ps, t) => ps.reduce((s, p) => s + (p.itens || []).filter((i) => i.tipo === t).reduce((n, i) => n + Number(i.qtd || 1), 0), 0);
+  // serviços = tudo que não é produto ("outros"); vendas antigas ainda trazem "cabelo"/"barba"
+  const contaServicos = (ps) => ps.reduce((s, p) => s + (p.itens || []).filter((i) => i.tipo !== "outros").reduce((n, i) => n + Number(i.qtd || 1), 0), 0);
   const devendo = (ps) => ps.filter((p) => p.forma === "prazo" && !p.pago);
   const formaPaga = (p) => p.pago_forma || (p.forma === "prazo" ? "dinheiro" : p.forma);
   /* Quanto entrou em cada forma (uma venda pode ter dinheiro + Pix + cartão) e a taxa da maquininha. */
@@ -57,7 +58,7 @@
     const corpo = corpoAtual;
     const hoje = d7.hoje, rec = recebidos(d7.pedidos, hoje, hoje);
     const pix = somaPix(rec), din = somaDin(rec), cart = somaCartao(rec), taxa = somaTaxa(rec);
-    const SECOES = [["cortes", "Gráficos de corte"], ["produtos", "Gráficos de produtos"], ["relatorios", "Relatórios"], ["inadimplencia", `Inadimplência${devendo(d7.pedidos).length ? ` (${devendo(d7.pedidos).length})` : ""}`]];
+    const SECOES = [["cortes", "Gráficos de serviços"], ["produtos", "Gráficos de produtos"], ["relatorios", "Relatórios"], ["inadimplencia", `Inadimplência${devendo(d7.pedidos).length ? ` (${devendo(d7.pedidos).length})` : ""}`]];
     corpo.innerHTML = `
       <section class="cartao caixa-hoje" aria-label="Total do caixa hoje">
         <div class="rotulo-kpi">Total em caixa hoje · ${esc(diaSemana(hoje))} ${esc(br(hoje))}</div>
@@ -116,20 +117,21 @@
     const pix = somaPix(rec), din = somaDin(rec), cart = somaCartao(rec), taxa = somaTaxa(rec);
     const aReceber = soma(devendo(d7.pedidos));
     const dias = Array.from({ length: 7 }, (_, i) => somaDias(de, i)).map((d) => ({ dia: d, rot: `${diaSemana(d)} ${br(d)}`, curto: diaSemana(d), v: liquido(rec.filter((p) => ymd(p.pago_em) === d)) }));
-    el.innerHTML = `<section class="cartao"><h2>Cortes · últimos 7 dias</h2><p class="pequeno suave">${esc(br(de))} a ${esc(br(hoje))}</p>
+    const porServico = agruparProdutos(real.map((p) => ({ itens: (p.itens || []).filter((i) => i.tipo !== "outros") })));
+    el.innerHTML = `<section class="cartao"><h2>Serviços · últimos 7 dias</h2><p class="pequeno suave">${esc(br(de))} a ${esc(br(hoje))}</p>
       <div class="kpis">
-        ${tile("Cortes de cabelo realizados", contaTipo(real, "cabelo"))}
-        ${tile("Barbas realizadas", contaTipo(real, "barba"))}
+        ${tile("Serviços realizados", contaServicos(real))}
         ${tile("Recebido em Pix", C.dinheiro(pix))}
         ${tile("Recebido em dinheiro", C.dinheiro(din))}
         ${cart || temCartao() ? tile("Recebido em cartão", C.dinheiro(cart), `débito ${C.dinheiro(somaDeb(rec))} · crédito ${C.dinheiro(somaCred(rec))}`) : ""}
         ${taxa ? tile("Taxa da maquininha", "−" + C.dinheiro(taxa), "descontada pelo banco") : ""}
-        ${tile("Cortes à prazo", real.filter((p) => p.forma === "prazo").length)}
+        ${tile("Serviços à prazo", real.filter((p) => p.forma === "prazo").length)}
         ${tile("Total geral", C.dinheiro(soma(rec)), "inclui à prazo já pagos")}
         ${taxa ? tile("Total líquido", C.dinheiro(soma(rec) - taxa), "já sem a taxa do cartão") : ""}
         ${tile("A receber (à prazo)", C.dinheiro(aReceber), "todos os em aberto")}
       </div>
-      <h3 style="margin-top:1rem">Recebido com cortes por dia${taxa ? " (líquido, já sem a taxa do cartão)" : ""}</h3>
+      ${porServico.length ? `<h3 style="margin-top:1rem">Serviços realizados, por serviço</h3>${barras(porServico.slice(0, 12).map((x) => ({ rot: x.rot, v: x.qtd })), (v) => String(v))}` : ""}
+      <h3 style="margin-top:1rem">Recebido com serviços por dia${taxa ? " (líquido, já sem a taxa do cartão)" : ""}</h3>
       ${colunas(dias, C.dinheiro)}
       <button class="link" data-ver="tab-cortes">Ver números</button>
       <div id="tab-cortes" class="oculto">${tabela(["Dia", "Recebido"], dias.map((d) => [esc(d.rot), C.dinheiro(d.v)]))}</div></section>`;
@@ -200,7 +202,7 @@
     const itensTxt = (p) => (p.itens || []).map((i) => `${i.qtd > 1 ? i.qtd + "× " : ""}${esc(i.nome)}`).join(", ");
     const extrasPag = (p) => [p.forma === "prazo" ? "à prazo" : "", p.origem === "balcao" ? "balcão" : ""].filter(Boolean).join(" · ");
     // PDF: uma linha de texto por venda
-    const linhas = vendas.map((p) => [quandoTxt(p), esc(p.cliente_nome), p.tipo === "produto" ? "Produto" : "Corte", itensTxt(p),
+    const linhas = vendas.map((p) => [quandoTxt(p), esc(p.cliente_nome), p.tipo === "produto" ? "Produto" : "Serviço", itensTxt(p),
       textoPag(p) + (extrasPag(p) ? " · " + extrasPag(p) : "") + (Number(p.taxa_valor) ? ` · taxa −${C.dinheiro(p.taxa_valor)}` : ""), C.dinheiro(p.total)]);
     // tela: cada forma numa linha (valor junto da forma), taxa à parte
     const pagHtml = (p) => `${listaPag(p).map((x) => `<span class="rel-parte">${FORMAS[x.f] || esc(x.f)} ${C.dinheiro(x.v)}</span>`).join("")}${
@@ -210,14 +212,14 @@
       `<button class="btn mini sec btn-excluir" data-excluir="${p.id}" aria-label="Excluir venda de ${esc(p.cliente_nome)}">${U.icone("lixeira")}Excluir</button>`]);
     const resumo = { titulo, de, ate, vendas, cortes, prods, real, linhas, pix: somaPix(vendas), din: somaDin(vendas), deb: somaDeb(vendas), cred: somaCred(vendas), taxa: somaTaxa(vendas) };
     saida.innerHTML = `<h3 style="margin-top:1rem">${esc(titulo)}</h3>
-      <div class="kpis">${tile("Cortes", C.dinheiro(soma(cortes)), `${cortes.length} recebimento(s)`)}${tile("Produtos", C.dinheiro(soma(prods)), `${prods.length} venda(s)`)}
+      <div class="kpis">${tile("Serviços", C.dinheiro(soma(cortes)), `${cortes.length} recebimento(s)`)}${tile("Produtos", C.dinheiro(soma(prods)), `${prods.length} venda(s)`)}
         ${tile("Pix", C.dinheiro(resumo.pix))}${tile("Dinheiro", C.dinheiro(resumo.din))}
         ${resumo.deb + resumo.cred || dados.aceita_debito || dados.aceita_credito ? tile("Cartão", C.dinheiro(resumo.deb + resumo.cred), `débito ${C.dinheiro(resumo.deb)} · crédito ${C.dinheiro(resumo.cred)}`) : ""}
         ${resumo.taxa ? tile("Taxa da maquininha", "−" + C.dinheiro(resumo.taxa), "descontada pelo banco") : ""}</div>
       <div class="total-banda${resumo.taxa ? " com-taxa" : ""}">${resumo.taxa
         ? `${tile("Total líquido", C.dinheiro(soma(vendas) - resumo.taxa), "já sem a taxa do cartão")}${tile("Total geral", C.dinheiro(soma(vendas)), "antes da taxa")}`
         : tile("Total geral", C.dinheiro(soma(vendas)))}</div>
-      <p class="pequeno suave">Cortes realizados no período: <b>${real.length}</b> (${contaTipo(real, "cabelo")} de cabelo, ${contaTipo(real, "barba")} de barba). À prazo pago entra no dia em que foi pago.</p>
+      <p class="pequeno suave">Serviços realizados no período: <b>${contaServicos(real)}</b>${(() => { const l = agruparProdutos(real.map((p) => ({ itens: (p.itens || []).filter((i) => i.tipo !== "outros") }))); return l.length ? " (" + l.map((x) => `${x.qtd} ${esc(x.rot)}`).join(", ") + ")" : ""; })()}. À prazo pago entra no dia em que foi pago.</p>
       ${vendas.length ? tabela(["Quando", "Cliente", "Itens", "Pagamento", "Valor", ""], linhasTela, "tabela-vendas") : `<p class="suave pequeno">Nenhuma venda no período.</p>`}
       <div class="linha-acoes"><button class="btn sec" id="r-pdf"${vendas.length ? "" : " disabled"}>Baixar PDF</button></div>`;
     $("#r-pdf", el).onclick = () => pdf(resumo);

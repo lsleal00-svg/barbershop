@@ -398,6 +398,7 @@
       $$("#cmd-pg .pg-linhas, #cmd-pg .pg-situacao, #cmd-pg .pg-dica, #cmd-pg .pg-troco", m).forEach((x) => x.classList.toggle("oculto", sim));
       $$("#cmd-pg .forma-seg[data-f]", m).forEach((b) => (b.disabled = sim));
       $("#cmd-prazo", m).setAttribute("aria-pressed", String(sim));
+      if (sim && !$("#cmd-nome-p", m).value && $("#cmd-nome", m).value) $("#cmd-nome-p", m).value = $("#cmd-nome", m).value;
       if (sim) $("#cmd-nome-p", m).focus();
     }
     async function confirmar() {
@@ -416,6 +417,7 @@
         corpoRpc.p_nome = $("#cmd-nome", m).value.trim();
       }
       const r = await A().S.rpc("balcao_registrar", corpoRpc);
+      if (window.CLIENTES) window.CLIENTES.esquecer();
       comanda = [];
       if (tela) { desenharLista(); desenharComanda(); }
       U.aviso(`Pagamento informado: ${C.dinheiro(r.total)}${trocoFinal ? ` · troco ${C.dinheiro(trocoFinal)}` : ""}.`);
@@ -426,6 +428,7 @@
     pintarItens();
     pg = ligarPagador(m, "cmd-pg", totalComanda(), dados);
     pintarTotal();
+    if (window.CLIENTES) { window.CLIENTES.ligar(m, "#cmd-nome"); window.CLIENTES.ligar(m, "#cmd-nome-p", "#cmd-zap"); }
     if ($("#cmd-prazo", m)) {
       $("#cmd-prazo", m).onclick = () => modoPrazo(!st.prazo);
       $("#cmd-prazo-sair", m).onclick = () => modoPrazo(false);

@@ -41,7 +41,7 @@
           ${A().ehDono() ? `<button class="btn mini sec" id="cor-barra"${dis()}>${U.icone("paleta")}Cor da barra</button>` : ""}</div>` : ""}
         ${destaques.length ? `<section class="destaques" id="destaques" style="margin:1rem 0"></section>` : ""}
         ${!cats.length ? `<div class="vazio-cardapio" style="margin-top:1rem"><p><b>Comece criando uma categoria.</b></p>
-            <p class="pequeno">Ex.: “Cortes” (tipo Corte de cabelo), “Barba” (tipo Barba) e “Bonés” (tipo Outros). Sem categoria não dá para cadastrar itens.</p>
+            <p class="pequeno">Ex.: “Cortes”, “Barba” e “Química” (tipo Serviço) e “Bonés” ou “Bebidas” (tipo Produto). Sem categoria não dá para cadastrar itens.</p>
             <button class="btn" id="nova-cat-2"${dis()}>Criar categoria</button></div>`
         : `<div class="cab-cat"><h2>${cat.icone ? esc(cat.icone) + " " : ""}${esc(cat.nome)} <span class="selo">${esc(C.TIPOS[cat.tipo])}</span></h2>
             <button class="btn" id="novo-item"${dis()}>＋ ${esc(C.NOVO[cat.tipo])}</button></div>
@@ -72,15 +72,14 @@
 
   /* ---------- categorias ---------- */
   function novaCategoria() {
-    const usado = (t) => cats.some((c) => c.tipo === t);
-    const padrao = !usado("cabelo") ? "cabelo" : !usado("barba") ? "barba" : "outros";
+    const padrao = cats.some((c) => !C.ehProduto(c.tipo)) ? "outros" : "servico";
     let icone = null;
     const aberto = U.modal("Nova categoria", `
-      <div class="campo"><label for="cat-nome">Nome da categoria</label><input id="cat-nome" maxlength="40" placeholder="Ex.: Cortes, Barba, Bonés"></div>
+      <div class="campo"><label for="cat-nome">Nome da categoria</label><input id="cat-nome" maxlength="40" placeholder="Ex.: Cortes, Barba, Química, Bonés"></div>
       <div class="campo"><label>Tipo</label><div class="tipos-cat">
-        ${["cabelo", "barba", "outros"].map((t) => `<label class="tipo-op${t !== "outros" && usado(t) ? " usado" : ""}"><input type="radio" name="cat-tipo" value="${t}"${t !== "outros" && usado(t) ? " disabled" : ""}${t === padrao ? " checked" : ""}>
-          <span>${C.TIPOS[t]}${t !== "outros" && usado(t) ? " <small>(já existe)</small>" : ""}</span></label>`).join("")}</div>
-        <p class="pequeno suave" style="margin-top:.4rem">Corte de cabelo e Barba só podem existir uma vez. “Outros” é para os produtos e pode ter quantas quiser.</p></div>
+        ${[["servico", "Serviço", "Cortes, barba, sobrancelha… Entra na fila e pode ser agendado."], ["outros", "Produto", "Bonés, bebidas, pomadas… Vai para o carrinho."]].map(([t, rot, dica]) =>
+          `<label class="tipo-op"><input type="radio" name="cat-tipo" value="${t}"${t === padrao ? " checked" : ""}><span><b>${rot}</b><small>${dica}</small></span></label>`).join("")}</div>
+        <p class="pequeno suave" style="margin-top:.4rem">Pode criar quantas categorias quiser de cada tipo.</p></div>
       <div class="campo"><label>Ícone (opcional)</label><div class="icones">${C.ICONES.map((ic) => `<button type="button" class="icone-op" data-ic="${ic}" aria-pressed="false">${ic}</button>`).join("")}</div></div>`, [
       { rotulo: "Cancelar", classe: "sec", valor: false },
       { rotulo: "Salvar", antes: async (m) => {
@@ -89,7 +88,7 @@
         if (!tipo) { U.aviso("Escolha o tipo.", "erro"); return false; }
         const r = await A().S.rest("categorias", { method: "POST", prefer: "return=representation",
           body: { barbearia_id: b().id, tipo, nome, icone: icone, ordem: cats.length } }).catch((e) => {
-          throw new Error(/categorias_tipo_unico|duplicate/i.test(e.original || e.message) ? "Já existe uma categoria desse tipo." : e.message);
+          throw e;
         });
         cats.push(r[0]); atual = r[0].id; desenhar(); U.aviso("Categoria criada.");
       } },
@@ -127,16 +126,17 @@
       const n = itens.filter((i) => i.categoria_id === c.id).length;
       return `<div class="cat-linha" data-id="${c.id}"><span class="cat-ic">${esc(c.icone || "•")}</span>
         <input value="${esc(c.nome)}" maxlength="40" aria-label="Nome da categoria">
-        <span class="pequeno suave">${esc(C.TIPOS[c.tipo])} · ${n} ite${n === 1 ? "m" : "ns"}</span>
+        <select aria-label="Tipo da categoria" data-tipo>${[["servico", "Serviço"], ["outros", "Produto"]].map(([t, rot]) => `<option value="${t}"${(C.ehProduto(c.tipo) ? "outros" : "servico") === t ? " selected" : ""}>${rot}</option>`).join("")}</select>
+        <span class="pequeno suave">${n} ite${n === 1 ? "m" : "ns"}</span>
         <button class="btn mini sec" data-a="salvar">Salvar</button><button class="btn mini perigo" data-a="excluir">Excluir</button></div>`;
     };
     const aberto = U.modal("Editar categorias", `<div class="cats-lista">${cats.map(linha).join("")}</div>`, [{ rotulo: "Fechar", valor: null }]);
     $$(".cat-linha [data-a]").forEach((bt) => (bt.onclick = async () => {
       const el = bt.closest(".cat-linha"), c = cats.find((x) => x.id === el.dataset.id);
       if (bt.dataset.a === "salvar") {
-        const nome = $("input", el).value.trim();
+        const nome = $("input", el).value.trim(), tipo = $("[data-tipo]", el).value;
         if (!nome) return U.aviso("O nome não pode ficar vazio.", "erro");
-        try { const r = await A().S.rest(`categorias?id=eq.${c.id}`, { method: "PATCH", prefer: "return=representation", body: { nome } }); Object.assign(c, r[0]); desenhar(); U.aviso("Nome salvo."); }
+        try { const r = await A().S.rest(`categorias?id=eq.${c.id}`, { method: "PATCH", prefer: "return=representation", body: { nome, tipo } }); Object.assign(c, r[0]); desenhar(); U.aviso("Categoria salva."); }
         catch (err) { U.aviso(err.message, "erro"); }
         return;
       }
@@ -163,12 +163,12 @@
   function formItem(it, cat) {
     let arquivo = null, tirarFoto = false;
     const novo = !it;
-    const aberto = U.modal(novo ? C.NOVO[cat.tipo] : "Editar " + (cat.tipo === "outros" ? "produto" : "corte"), `
+    const aberto = U.modal(novo ? C.NOVO[cat.tipo] : "Editar " + (C.ehProduto(cat.tipo) ? "produto" : "serviço"), `
       <div class="foto-escolha"><img id="it-previa" src="${esc(it ? C.foto(it, cat.tipo) : C.imagemPadrao(cat.tipo))}" alt="">
         <div><label for="it-foto">Foto (opcional)</label><input id="it-foto" type="file" accept="image/*">
         ${it && it.foto_url ? `<button type="button" class="link" id="it-sem-foto">Remover a foto</button>` : ""}
-        <p class="pequeno suave">${cat.tipo === "outros" ? "Sem foto, aparece um desenho de sacola." : "Sem foto, aparece o desenho de tesoura e pente."}</p></div></div>
-      <div class="campo"><label for="it-nome">Nome</label><input id="it-nome" maxlength="60" value="${esc(it ? it.nome : "")}" placeholder="${cat.tipo === "outros" ? "Ex.: Boné preto" : cat.tipo === "barba" ? "Ex.: Barba completa" : "Ex.: Degradê"}"></div>
+        <p class="pequeno suave">${C.ehProduto(cat.tipo) ? "Sem foto, aparece um desenho de sacola." : "Sem foto, aparece o desenho de tesoura e pente."}</p></div></div>
+      <div class="campo"><label for="it-nome">Nome</label><input id="it-nome" maxlength="60" value="${esc(it ? it.nome : "")}" placeholder="${C.ehProduto(cat.tipo) ? "Ex.: Boné preto" : cat.tipo === "barba" ? "Ex.: Barba completa" : "Ex.: Degradê"}"></div>
       <div class="campo"><label for="it-preco">Preço (R$)</label><input id="it-preco" inputmode="decimal" value="${it ? String(it.preco).replace(".", ",") : ""}" placeholder="35,00"></div>`, [
       { rotulo: "Cancelar", classe: "sec", valor: false },
       { rotulo: "Salvar", antes: async (m) => {
