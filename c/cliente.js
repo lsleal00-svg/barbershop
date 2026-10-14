@@ -22,10 +22,11 @@
   const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } };
   const ler = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) || padrao; } catch (e) { return padrao; } };
   const chaveSacola = () => "bs_sacola_" + slug;
-  function salvarSacola() { guardar(chaveSacola(), { s: servicos.map((x) => x.id), c: carrinho.map((x) => [x.item.id, x.qtd]) }); }
+  function salvarSacola() { guardar(chaveSacola(), { s: servicos.map((x) => [x.item.id, x.qtd]), c: carrinho.map((x) => [x.item.id, x.qtd]) }); }
   function lerSacola() {
     const g = ler(chaveSacola(), { s: [], c: [] });
-    servicos = (g.s || []).map((id) => itens.find((i) => i.id === id && !i.esgotado)).filter(Boolean);
+    // formato antigo: lista de ids; novo: [id, qtd]
+    servicos = (g.s || []).map((x) => (Array.isArray(x) ? x : [x, 1])).map(([id, q]) => ({ item: itens.find((i) => i.id === id && !i.esgotado), qtd: q })).filter((x) => x.item);
     carrinho = (g.c || []).map(([id, q]) => ({ item: itens.find((i) => i.id === id && !i.esgotado), qtd: q })).filter((x) => x.item);
   }
   function aparelho() {
@@ -108,8 +109,8 @@
       return aberta() ? `<button class="btn" data-a="carrinho">${qtd ? `No carrinho (${qtd}) ＋` : "Adicionar ao carrinho"}</button>`
         : `<button class="btn sec" disabled>Fechado agora</button>`;
     }
-    const ja = servicos.some((s) => s.id === it.id);
-    return `<button class="btn${ja ? " sec" : ""}" data-a="servico">${ja ? "✓ Solicitado" : "Solicitar serviço"}</button>`;
+    const qtd = (servicos.find((x) => x.item.id === it.id) || {}).qtd;
+    return `<button class="btn" data-a="servico">${qtd ? `Solicitado (${qtd}) ＋` : "Solicitar serviço"}</button>`;
   }
 
   function desenharLista() {
@@ -188,13 +189,15 @@
   }
 
   /* ---------- serviços e carrinho ---------- */
+  const MAX_SERV = 10;
+  /* − n ＋ e lixeira (carrinho e serviços solicitados) */
+  const controleQtd = (x) => `<div class="qtd"><button class="btn mini sec" data-q="-1" data-id="${x.item.id}" aria-label="Menos">−</button><b>${x.qtd}</b><button class="btn mini sec" data-q="1" data-id="${x.item.id}" aria-label="Mais">＋</button><button class="btn mini sec tirar" data-tirar="${x.item.id}" aria-label="Tirar ${esc(x.item.nome)}" title="Tirar">${U.icone("lixeira")}</button></div>`;
   function solicitarServico(it) {
-    const t = tipoDe(it);
-    const outro = servicos.find((s) => tipoDe(s) === t);
-    if (servicos.some((s) => s.id === it.id)) servicos = servicos.filter((s) => s.id !== it.id);
-    else { servicos = servicos.filter((s) => s !== outro); servicos.push(it); }
+    const x = servicos.find((c) => c.item.id === it.id);
+    if (x && x.qtd >= MAX_SERV) return U.aviso(`No máximo ${MAX_SERV} de cada serviço.`, "erro");
+    if (x) x.qtd += 1; else servicos.push({ item: it, qtd: 1 });
     salvarSacola(); desenharLista(); desenharBarra(); balancar(it);
-    if (servicos.includes(it)) U.aviso(outro ? `Trocado: ${it.nome} no lugar de ${outro.nome}.` : `${it.nome} em serviços solicitados.`);
+    U.aviso(x ? `${it.nome}: ${x.qtd} em serviços solicitados.` : `${it.nome} em serviços solicitados.`);
   }
   function porNoCarrinho(it) {
     const x = carrinho.find((c) => c.item.id === it.id);
@@ -212,9 +215,10 @@
     if (!el) return;
     const ativos = meus.filter((p) => p.status === "pendente" || p.status === "aprovado");
     const nCar = carrinho.reduce((s, x) => s + x.qtd, 0);
+    const nServ = servicos.reduce((s, x) => s + x.qtd, 0);
     el.classList.toggle("oculto", !servicos.length && !nCar && !ativos.length);
     el.innerHTML = `
-      ${servicos.length ? `<button class="btn" id="ver-servicos">${U.icone("tesoura")}Serviços solicitados (${servicos.length})</button>` : ""}
+      ${servicos.length ? `<button class="btn" id="ver-servicos">${U.icone("tesoura")}Serviços solicitados (${nServ})</button>` : ""}
       ${nCar ? `<button class="btn" id="ver-carrinho">${U.icone("sacola")}Carrinho (${nCar})</button>` : ""}
       ${ativos.length ? `<button class="btn sec" id="ver-meus">${U.icone("lista")}Meus pedidos (${ativos.length})</button>` : ""}`;
     if ($("#ver-servicos")) $("#ver-servicos").onclick = verServicos;
@@ -260,13 +264,19 @@
     const j = janela("Serviços solicitados");
     const desenhar = () => {
       if (!servicos.length) { j.fechar(); desenharBarra(); return; }
-      const total = servicos.reduce((s, it) => s + C.final(it), 0);
-      j.mostrar("Serviços solicitados", servicos.map((it) => linhaItem(it, `<button class="btn mini sec" data-tirar="${it.id}">Remover</button>`)).join("") +
-        `<p class="total-linha">Total: <b>${C.dinheiro(total)}</b></p><p class="pequeno suave">Você pode escolher um corte de cabelo e uma barba.</p>`, [
+      const total = servicos.reduce((s, x) => s + C.final(x.item) * x.qtd, 0);
+      j.mostrar("Serviços solicitados", servicos.map((x) => linhaItem(x.item, controleQtd(x))).join("") +
+        `<p class="total-linha">Total: <b>${C.dinheiro(total)}</b></p>`, [
         { rotulo: "Adicionar um novo serviço", classe: "sec", acao: () => { j.fechar(); irParaServicos(); } },
-        { rotulo: "Finalizar", acao: () => { j.fechar(); assistente({ tipo: "servico", itens: servicos.slice() }); } },
+        { rotulo: "Finalizar", acao: () => { j.fechar(); assistente({ tipo: "servico", itens: servicos.map((x) => ({ item: x.item, qtd: x.qtd })) }); } },
       ]);
-      $$("[data-tirar]", j.el).forEach((bt) => (bt.onclick = () => { servicos = servicos.filter((s) => s.id !== bt.dataset.tirar); salvarSacola(); desenharLista(); desenharBarra(); desenhar(); }));
+      $$("[data-q]", j.el).forEach((bt) => (bt.onclick = () => {
+        const x = servicos.find((c) => c.item.id === bt.dataset.id);
+        x.qtd = Math.min(MAX_SERV, x.qtd + Number(bt.dataset.q));
+        if (x.qtd <= 0) servicos = servicos.filter((c) => c !== x);
+        salvarSacola(); desenharLista(); desenharBarra(); desenhar();
+      }));
+      $$("[data-tirar]", j.el).forEach((bt) => (bt.onclick = () => { servicos = servicos.filter((c) => c.item.id !== bt.dataset.tirar); salvarSacola(); desenharLista(); desenharBarra(); desenhar(); }));
     };
     desenhar();
   }
@@ -281,7 +291,7 @@
     const desenhar = () => {
       if (!carrinho.length) { j.fechar(); desenharBarra(); desenharLista(); return; }
       const total = carrinho.reduce((s, x) => s + C.final(x.item) * x.qtd, 0);
-      j.mostrar("Carrinho", carrinho.map((x) => linhaItem(x.item, `<div class="qtd"><button class="btn mini sec" data-q="-1" data-id="${x.item.id}" aria-label="Menos">−</button><b>${x.qtd}</b><button class="btn mini sec" data-q="1" data-id="${x.item.id}" aria-label="Mais">＋</button><button class="btn mini sec tirar" data-tirar="${x.item.id}" aria-label="Tirar ${esc(x.item.nome)} do carrinho" title="Tirar do carrinho">${U.icone("lixeira")}</button></div>`)).join("") +
+      j.mostrar("Carrinho", carrinho.map((x) => linhaItem(x.item, controleQtd(x))).join("") +
         `<p class="total-linha">Total: <b>${C.dinheiro(total)}</b></p>`, [
         { rotulo: "Continuar comprando", classe: "sec", acao: () => j.fechar() },
         { rotulo: "Finalizar compra", desligado: !aberta(), acao: () => { j.fechar(); assistente({ tipo: "produto", itens: carrinho.map((x) => ({ item: x.item, qtd: x.qtd })) }); } },
@@ -307,26 +317,32 @@
     const j = janela(modo === "agendar" ? "Agendar corte" : "Pedir corte");
     const lista = (t) => visiveis().filter((i) => tipoDe(i) === t);
     let aba = lista("cabelo").length ? "cabelo" : "barba", q = "";
-    const escolha = { cabelo: servicos.find((s) => tipoDe(s) === "cabelo") || null, barba: servicos.find((s) => tipoDe(s) === "barba") || null };
+    const escolha = new Map(servicos.map((x) => [x.item.id, x.qtd]));   // id → quantidade
+    const qtdTipo = (t) => [...escolha].reduce((s, [id, q]) => s + (tipoDe(itens.find((i) => i.id === id)) === t ? q : 0), 0);
+    const ctrl = (it) => {
+      const q = escolha.get(it.id) || 0;
+      return q ? `<div class="qtd"><button class="btn mini sec" data-esc="${it.id}" data-d="-1" aria-label="Menos">−</button><b>${q}</b><button class="btn mini sec" data-esc="${it.id}" data-d="1" aria-label="Mais">＋</button></div>`
+        : `<button class="btn mini sec" data-esc="${it.id}" data-d="1">Escolher</button>`;
+    };
     const desenhar = () => {
       const l = lista(aba).filter((i) => !q || norm(i.nome).includes(norm(q)));
       j.mostrar(`${modo === "agendar" ? "Agendar" : "Pedir corte"} · ${br.nome}`, `
         <input id="q-serv" type="search" placeholder="Buscar…" value="${esc(q)}" aria-label="Buscar serviço" style="margin-bottom:.6rem">
-        <div class="abas-mini">${["cabelo", "barba"].filter((t) => lista(t).length).map((t) => `<button class="chip" data-aba="${t}" aria-pressed="${t === aba}">${t === "cabelo" ? "Corte de cabelo" : "Barba"}${escolha[t] ? " ✓" : ""}</button>`).join("")}</div>
-        <div class="escolhas">${l.map((it) => linhaItem(it, `<button class="btn mini${escolha[aba] && escolha[aba].id === it.id ? "" : " sec"}" data-esc="${it.id}">${escolha[aba] && escolha[aba].id === it.id ? "✓ Escolhido" : "Escolher"}</button>`)).join("") || `<p class="suave pequeno">Nada encontrado.</p>`}</div>
-        <p class="pequeno suave">Escolha um corte de cabelo e, se quiser, uma barba.</p>`, [
-        { rotulo: "Continuar", desligado: !escolha.cabelo && !escolha.barba, acao: () => {
+        <div class="abas-mini">${["cabelo", "barba"].filter((t) => lista(t).length).map((t) => `<button class="chip" data-aba="${t}" aria-pressed="${t === aba}">${t === "cabelo" ? "Corte de cabelo" : "Barba"}${qtdTipo(t) ? ` (${qtdTipo(t)})` : ""}</button>`).join("")}</div>
+        <div class="escolhas">${l.map((it) => linhaItem(it, ctrl(it))).join("") || `<p class="suave pequeno">Nada encontrado.</p>`}</div>
+        <p class="pequeno suave">Escolha quantos serviços quiser. Ex.: 2 cortes, se vier com outra pessoa.</p>`, [
+        { rotulo: "Continuar", desligado: !escolha.size, acao: () => {
           j.fechar();
-          assistente({ tipo: "servico", itens: [escolha.cabelo, escolha.barba].filter(Boolean), barbeiro: br, quando: modo });
+          const sel = [...escolha].map(([id, qtd]) => ({ item: itens.find((i) => i.id === id), qtd })).filter((x) => x.item);
+          assistente({ tipo: "servico", itens: sel, barbeiro: br, quando: modo });
         } },
       ]);
       const campo = $("#q-serv", j.el);
       campo.oninput = (e) => { q = e.target.value; const pos = e.target.selectionStart; desenhar(); const c2 = $("#q-serv", j.el); c2.focus(); c2.setSelectionRange(pos, pos); };
       $$("[data-aba]", j.el).forEach((bt) => (bt.onclick = () => { aba = bt.dataset.aba; desenhar(); }));
       $$("[data-esc]", j.el).forEach((bt) => (bt.onclick = () => {
-        const it = itens.find((x) => x.id === bt.dataset.esc);
-        escolha[aba] = escolha[aba] && escolha[aba].id === it.id ? null : it;
-        if (escolha[aba] && aba === "cabelo" && lista("barba").length && !escolha.barba) aba = "barba";
+        const id = bt.dataset.esc, q = Math.min(MAX_SERV, (escolha.get(id) || 0) + Number(bt.dataset.d));
+        if (q > 0) escolha.set(id, q); else escolha.delete(id);
         desenhar();
       }));
     };
@@ -335,7 +351,7 @@
 
   /* ---------- assistente do pedido ---------- */
   const FORMAS = { pix: "Pix", dinheiro: "Dinheiro em espécie", prazo: "À prazo", debito: "Cartão de débito", credito: "Cartão de crédito", misto: "Várias formas", aberto: "Paga na hora" };
-  function totalDe(e) { return e.tipo === "produto" ? e.itens.reduce((s, x) => s + C.final(x.item) * x.qtd, 0) : e.itens.reduce((s, it) => s + C.final(it), 0); }
+  function totalDe(e) { return e.itens.reduce((s, x) => s + C.final(x.item) * x.qtd, 0); }
 
   function assistente(e) {
     const j = janela("Finalizar");
@@ -447,7 +463,7 @@
       return new Date(meiaNoiteLocal + H.paraMin(e.horario) * 60000 - r.desvio * 60000).toISOString();
     }
     function pResumo() {
-      const linhas = e.tipo === "produto" ? e.itens.map((x) => `${x.qtd} × ${esc(x.item.nome)} — ${C.dinheiro(C.final(x.item) * x.qtd)}`) : e.itens.map((it) => `${esc(it.nome)} — ${C.dinheiro(C.final(it))}`);
+      const linhas = e.itens.map((x) => `${x.qtd > 1 ? x.qtd + " × " : ""}${esc(x.item.nome)} — ${C.dinheiro(C.final(x.item) * x.qtd)}`);
       j.mostrar("Confira o pedido", `<ul class="resumo">${linhas.map((l) => `<li>${l}</li>`).join("")}</ul>
         <p class="total-linha">Total: <b>${C.dinheiro(totalDe(e))}</b></p>
         <dl class="resumo-dados">
@@ -461,7 +477,7 @@
     async function enviar() {
       const corpo = {
         p_barbearia: b.id, p_dispositivo: aparelho(), p_tipo: e.tipo,
-        p_itens: e.tipo === "produto" ? e.itens.map((x) => ({ id: x.item.id, qtd: x.qtd })) : e.itens.map((it) => ({ id: it.id, qtd: 1 })),
+        p_itens: e.itens.map((x) => ({ id: x.item.id, qtd: x.qtd })),
         p_barbeiro: e.tipo === "servico" ? (e.barbeiro.id || null) : null,
         p_nome: e.nome, p_whatsapp: precisaZap() ? e.whatsapp : null, p_forma: e.forma,
         p_prazo_data: e.forma === "prazo" ? e.prazo_data : null, p_agendado_para: quandoIso(),
