@@ -70,7 +70,7 @@
           <div class="cab-textos"><h1>${esc(b.nome)}</h1>${statusHtml()}</div>
           ${U.instalado() ? "" : `<button class="btn mini" id="instalar">${U.icone("baixar")}Instalar app</button>`}
         </div>
-        <div class="busca-linha"><input id="busca" type="search" placeholder="Buscar corte, barba ou produto…" aria-label="Buscar" autocomplete="off"></div>
+        <div class="busca-linha"><input id="busca" type="search" placeholder="Buscar serviço ou produto…" aria-label="Buscar" autocomplete="off"></div>
         </header>
         <nav class="barra-cat" id="cats" aria-label="Categorias"></nav>
       </div>
@@ -281,7 +281,7 @@
     desenhar();
   }
   function irParaServicos() {
-    const c = cats.find((x) => x.tipo === "cabelo" && visiveis().some((i) => i.categoria_id === x.id)) || cats.find((x) => x.tipo === "barba");
+    const c = cats.find((x) => !C.ehProduto(x.tipo) && visiveis().some((i) => i.categoria_id === x.id));
     if (c) { atual = c.id; busca = ""; $("#busca").value = ""; desenharCats(); desenharLista(); }
     $("#lista").scrollIntoView({ behavior: "smooth" });
   }
@@ -315,21 +315,21 @@
   /* "Pedir corte" / "Agendar corte" a partir da fila de um barbeiro. */
   function escolherServicos(br, modo) {
     const j = janela(modo === "agendar" ? "Agendar corte" : "Pedir corte");
-    const lista = (t) => visiveis().filter((i) => tipoDe(i) === t);
-    let aba = lista("cabelo").length ? "cabelo" : "barba", q = "";
+    const lista = () => visiveis().filter((i) => !C.ehProduto(tipoDe(i)));
+    let q = "";
     const escolha = new Map(servicos.map((x) => [x.item.id, x.qtd]));   // id → quantidade
-    const qtdTipo = (t) => [...escolha].reduce((s, [id, q]) => s + (tipoDe(itens.find((i) => i.id === id)) === t ? q : 0), 0);
+    const nEsc = () => [...escolha.values()].reduce((s, n) => s + n, 0);
     const ctrl = (it) => {
       const q = escolha.get(it.id) || 0;
       return q ? `<div class="qtd"><button class="btn mini sec" data-esc="${it.id}" data-d="-1" aria-label="Menos">−</button><b>${q}</b><button class="btn mini sec" data-esc="${it.id}" data-d="1" aria-label="Mais">＋</button></div>`
         : `<button class="btn mini sec" data-esc="${it.id}" data-d="1">Escolher</button>`;
     };
     const desenhar = () => {
-      const l = lista(aba).filter((i) => !q || norm(i.nome).includes(norm(q)));
+      const l = lista().filter((i) => !q || norm(i.nome).includes(norm(q)));
       j.mostrar(`${modo === "agendar" ? "Agendar" : "Pedir corte"} · ${br.nome}`, `
-        <input id="q-serv" type="search" placeholder="Buscar…" value="${esc(q)}" aria-label="Buscar serviço" style="margin-bottom:.6rem">
-        <div class="abas-mini">${["cabelo", "barba"].filter((t) => lista(t).length).map((t) => `<button class="chip" data-aba="${t}" aria-pressed="${t === aba}">${t === "cabelo" ? "Corte de cabelo" : "Barba"}${qtdTipo(t) ? ` (${qtdTipo(t)})` : ""}</button>`).join("")}</div>
-        <div class="escolhas">${l.map((it) => linhaItem(it, ctrl(it))).join("") || `<p class="suave pequeno">Nada encontrado.</p>`}</div>
+        <div class="servicos-cab"><b>Serviços</b><span class="pequeno suave" id="n-esc">${nEsc() ? `${nEsc()} escolhido${nEsc() > 1 ? "s" : ""}` : "Nenhum escolhido"}</span></div>
+        <input id="q-serv" type="search" placeholder="Buscar serviço…" value="${esc(q)}" aria-label="Buscar serviço" style="margin-bottom:.5rem">
+        <div class="escolhas lista-rolagem">${l.map((it) => linhaItem(it, ctrl(it))).join("") || `<p class="suave pequeno">Nada encontrado.</p>`}</div>
         <p class="pequeno suave">Escolha quantos serviços quiser. Ex.: 2 cortes, se vier com outra pessoa.</p>`, [
         { rotulo: "Continuar", desligado: !escolha.size, acao: () => {
           j.fechar();
@@ -339,11 +339,12 @@
       ]);
       const campo = $("#q-serv", j.el);
       campo.oninput = (e) => { q = e.target.value; const pos = e.target.selectionStart; desenhar(); const c2 = $("#q-serv", j.el); c2.focus(); c2.setSelectionRange(pos, pos); };
-      $$("[data-aba]", j.el).forEach((bt) => (bt.onclick = () => { aba = bt.dataset.aba; desenhar(); }));
       $$("[data-esc]", j.el).forEach((bt) => (bt.onclick = () => {
         const id = bt.dataset.esc, q = Math.min(MAX_SERV, (escolha.get(id) || 0) + Number(bt.dataset.d));
         if (q > 0) escolha.set(id, q); else escolha.delete(id);
+        const lr = $(".lista-rolagem", j.el), corpo = $(".modal-corpo", j.el), t1 = lr.scrollTop, t2 = corpo.scrollTop;
         desenhar();
+        $(".lista-rolagem", j.el).scrollTop = t1; $(".modal-corpo", j.el).scrollTop = t2;
       }));
     };
     desenhar();
