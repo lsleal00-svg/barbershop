@@ -5,8 +5,10 @@
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const C = {};
 
-  C.TIPOS = { cabelo: "Corte de cabelo", barba: "Barba", outros: "Outros (produtos)" };
-  C.NOVO = { cabelo: "Adicionar novo corte", barba: "Adicionar novo corte de barba", outros: "Adicionar novo produto" };
+  // Só dois tipos de categoria: serviço (cortes, barba, química…) e produto ("outros" no banco).
+  C.TIPOS = { servico: "Serviço", outros: "Produto", cabelo: "Serviço", barba: "Serviço" };
+  C.NOVO = { servico: "Adicionar novo serviço", outros: "Adicionar novo produto", cabelo: "Adicionar novo serviço", barba: "Adicionar novo serviço" };
+  C.ehProduto = (tipo) => tipo === "outros";
   C.ICONES = [
     // cortes, barba e cuidados
     "✂️", "💈", "🪒", "🧔", "🧔‍♂️", "👨", "👦", "👶", "👴", "💇‍♂️", "💇", "💆‍♂️", "👨‍🦲", "👨‍🦱", "👨‍🦰", "👱‍♂️", "🪮", "🧴", "🧼", "🫧", "💦", "🔥", "❄️", "🌿", "🎨", "🖌️", "✨", "💎",

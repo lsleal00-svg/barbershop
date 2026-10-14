@@ -72,6 +72,7 @@
       const rod = U.$(".modal-rodape", fundo);
       const fechar = (v) => { fundo.remove(); document.removeEventListener("keydown", tecla); resolve(v); };
       const tecla = (e) => { if (e.key === "Escape" && fundo === [...document.querySelectorAll(".modal-fundo")].pop()) fechar(null); };
+      fundo.fecharCom = fechar;   // para listas que fecham ao tocar num item
       (botoes || [{ rotulo: "Fechar", valor: null }]).forEach((b) => {
         const el = document.createElement("button");
         el.className = "btn " + (b.classe || "");
