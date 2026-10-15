@@ -1,0 +1,9 @@
+Fontes do site (todas gratuitas, licença SIL Open Font License 1.1 — pode usar em sites comerciais):
+- Inter (The Inter Project Authors)
+- Poppins (Indian Type Foundry)
+- Montserrat (The Montserrat Project Authors)
+- Nunito (The Nunito Project Authors)
+- Playfair Display (Claus Eggers Sørensen)
+- Barlow Condensed (Jeremy Tribby) — arquivos barlow-condensed-*.woff2
+Arquivos obtidos do pacote @fontsource (subconjunto latino, com acentos do português).
+Animações: GSAP 3.13 (vendor/gsap.min.js), gratuito para uso comercial (licença padrão GSAP).
