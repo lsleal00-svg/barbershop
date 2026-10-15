@@ -3,7 +3,7 @@
 .topo-ctrl-in { display: flex; align-items: center; gap: .85rem; padding: .85rem 1rem; max-width: 1100px; margin: 0 auto; }
 .marca-ctrl { width: 46px; height: 46px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--casca-texto) 85%, transparent); }
 .topo-ctrl-txt { flex: 1; min-width: 0; }
-.topo-ctrl h1 { margin: 0; font-family: var(--num); font-weight: 800; font-size: 1.65rem; line-height: 1; text-transform: uppercase; letter-spacing: .01em; }
+.topo-ctrl h1 { margin: 0; font-family: var(--num); font-weight: var(--peso-num); font-size: 1.65rem; line-height: 1; text-transform: var(--titulo-caixa); letter-spacing: .01em; }
 .topo-ctrl .rotulo { font-size: .8rem; color: var(--casca-suave); margin-top: .2rem; }
 .topo-ctrl .btn.sec { background: transparent; color: var(--casca-texto); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--casca-texto) 45%, transparent); }
 .topo-ctrl .btn.sec:hover { background: color-mix(in srgb, var(--casca-texto) 14%, transparent); }
@@ -30,3 +30,28 @@
 .vazio { text-align: center; color: var(--suave); padding: 2rem 1rem; }
 .mensagem { white-space: pre-wrap; background: color-mix(in srgb, var(--casca) 5%, var(--cartao)); border-radius: var(--raio); padding: .85rem; font-size: .92rem; box-shadow: inset 0 0 0 1px var(--linha); }
 .contador { margin-left: auto; font-size: .85rem; color: var(--suave); font-variant-numeric: tabular-nums; }
+
+/* ---------- Controle de Usuários: cadastro com aparência e prévia ---------- */
+.marca-ctrl { background: #000; }
+.ap-cadastro { display: grid; gap: 1.2rem; margin-top: .4rem; padding-top: 1rem; border-top: 1px solid var(--linha); }
+@media (min-width: 900px) { .ap-cadastro { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; } .previa-lado { position: sticky; top: 1rem; } }
+.rotulo-previa { font-size: .78rem; color: var(--suave); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: .45rem; }
+/* a prévia é um pedaço do app do cliente com o tema, o estilo e a fonte escolhidos */
+.previa-frame { display: block; width: 100%; max-width: 360px; height: 372px; border: 0; border-radius: 18px; overflow: hidden; pointer-events: none;
+  box-shadow: 0 0 0 1px var(--linha), var(--sombra-alta); background: var(--fundo); color-scheme: normal; }
+.previa-ap { color: var(--tinta); user-select: none; }
+.previa-ap .cabeca .barra { padding: .65rem .8rem .55rem; }
+.previa-ap .cabeca img, .previa-ap .logo-vazio { width: 40px; height: 40px; }
+.previa-ap .cabeca h1 { font-size: 1.2rem; }
+.previa-ap .barra-cat { padding: .45rem .7rem; }
+.previa-ap .chip { min-height: 32px; padding: .3rem .7rem; font-size: .8rem; }
+.previa-corpo { padding: .8rem; }
+.previa-ap .grade-itens { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.previa-ap .preco b { font-size: 1.2rem; }
+.previa-ap .item-info h3 { font-size: .82rem; }
+.previa-ap .item-acoes .btn { min-height: 36px; font-size: .76rem; }
+.filtro-tipo .chip { min-height: 34px; padding: .3rem .75rem; font-size: .84rem; }
+.filtro-tipo .chip .num { opacity: .7; margin-left: .2rem; }
+.tipo-selo { vertical-align: middle; margin-left: .35rem; }
+.meta-ap { display: inline-flex; align-items: center; gap: .35rem; }
+.ponto-tema { width: 12px; height: 12px; border-radius: 50%; background: var(--casca); box-shadow: 0 0 0 1px rgba(255, 255, 255, .35); display: inline-block; }
