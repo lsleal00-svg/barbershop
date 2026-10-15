@@ -406,5 +406,93 @@
     if (t.scrollLeft !== antes) e.preventDefault();
   }, { passive: false });
 
+
+  /* ---------- tipos de negócio ---------- */
+  // O banco manda os módulos (tabela tipos_negocio); sem resposta, vale a barbearia completa.
+  const MODULOS_PADRAO = { tipo: "barbearia", nome: "Barbearia", fila: true, servicos: true, agendamento: true, graficos_servicos: true, inadimplencia: true, intervalo: true, barbeiros: true };
+  U.TIPOS_NEGOCIO = {
+    barbearia: { nome: "Barbearia", negocio: "barbearia", Negocio: "Barbearia", a: "a", da: "da", na: "na" },
+    loja: { nome: "Loja de Variedades", negocio: "loja", Negocio: "Loja", a: "a", da: "da", na: "na" },
+    lanchonete: { nome: "Lanchonete", negocio: "lanchonete", Negocio: "Lanchonete", a: "a", da: "da", na: "na" },
+  };
+  U.modulos = (fonte) => Object.assign({}, MODULOS_PADRAO, (fonte && (fonte.modulos || fonte)) || {});
+  U.vocab = (b) => U.TIPOS_NEGOCIO[(b && b.tipo) || "barbearia"] || U.TIPOS_NEGOCIO.barbearia;
+
+  /* ---------- aparência: tema (cor), estilo e fonte ---------- */
+  U.ESTILOS = [["comum", "Comum", "Etiquetas firmes, cantos retos e a cor do tema no topo."], ["elegante", "Elegante", "Blocos de vidro translúcido, cantos suaves e brilho fino."]];
+  U.FONTES = [["inter", "Inter", "Simples e neutra"], ["poppins", "Poppins", "Redonda e moderna"], ["montserrat", "Montserrat", "Firme e geométrica"],
+    ["nunito", "Nunito", "Suave e amigável"], ["playfair", "Playfair Display", "Clássica, com serifa"], ["barlow", "Barlow Condensed", "Condensada, de etiqueta"]];
+  U.TEMAS = [["claro", "Azul", "#e6eef8", "#1d5fae"], ["escuro", "Escuro", "#121214", "#e9b949"], ["vermelho", "Vermelho", "#fae6e9", "#c4122f"],
+    ["verde", "Verde", "#e4f1e8", "#145a35"], ["amarelo", "Amarelo", "#fbf3d2", "#f5c400"], ["rosa", "Rosa", "#fdf0f5", "#c2185b"]];
+  U.aparencia = function (b) {
+    const h = document.documentElement;
+    h.dataset.tema = (b && b.tema) || "claro";
+    h.dataset.estilo = (b && b.estilo) || "comum";
+    h.dataset.fonte = (b && b.fonte) || "barlow";
+    U.corDaBarra();
+    U.cristal(h.dataset.estilo === "elegante");
+  };
+
+  const FAMILIA = { inter: "'Inter', sans-serif", poppins: "'Poppins', sans-serif", montserrat: "'Montserrat', sans-serif", nunito: "'Nunito', sans-serif",
+    playfair: "'Playfair Display', serif", barlow: "'Etiqueta', 'Arial Narrow', sans-serif" };
+  /* Os três seletores (cor, estilo, fonte). atual = { tema, estilo, fonte }; desligado = só leitura. */
+  U.aparenciaHtml = function (atual, desligado) {
+    const d = desligado ? " disabled" : "";
+    const a = Object.assign({ tema: "claro", estilo: "comum", fonte: "inter" }, atual || {});
+    return `<div class="aparencia">
+      <fieldset><legend>Cor do tema</legend><div class="temas">${U.TEMAS.map(([id, nome]) => `<button type="button" class="tema-op" data-tema="${id}" data-ap="tema" data-v="${id}" aria-pressed="${a.tema === id}"${d}>
+        <span class="amostra" aria-hidden="true"><i></i><b></b></span>${nome}</button>`).join("")}</div></fieldset>
+      <fieldset><legend>Estilo</legend><div class="estilos">${U.ESTILOS.map(([id, nome, dica]) => `<button type="button" class="estilo-op" data-ap="estilo" data-v="${id}" aria-pressed="${a.estilo === id}"${d}>
+        <span class="mini-estilo ${id}" aria-hidden="true"><i></i><i></i></span><span><b>${nome}</b><small>${dica}</small></span></button>`).join("")}</div></fieldset>
+      <fieldset><legend>Fonte</legend><div class="fontes-op">${U.FONTES.map(([id, nome, dica]) => `<button type="button" class="fonte-op" data-ap="fonte" data-v="${id}" aria-pressed="${a.fonte === id}"${d}>
+        <span class="aa" style="font-family:${FAMILIA[id]};font-weight:700" aria-hidden="true">Aa</span><b style="font-family:${FAMILIA[id]}">${nome}</b><small>${dica}</small></button>`).join("")}</div></fieldset>
+    </div>`;
+  };
+  /* Liga os botões: aoMudar(campo, valor) pode ser assíncrona (salvar) e lançar erro (desfaz a marcação). */
+  U.ligarAparencia = function (raiz, aoMudar) {
+    U.$$("[data-ap]", raiz).forEach((bt) => (bt.onclick = async () => {
+      const grupo = U.$$(`[data-ap="${bt.dataset.ap}"]`, raiz), antes = grupo.find((x) => x.getAttribute("aria-pressed") === "true");
+      grupo.forEach((x) => x.setAttribute("aria-pressed", String(x === bt)));
+      try { await aoMudar(bt.dataset.ap, bt.dataset.v); }
+      catch (err) { grupo.forEach((x) => x.setAttribute("aria-pressed", String(x === antes))); U.aviso(err.message, "erro"); }
+    }));
+  };
+
+  /* ---------- movimento do estilo Elegante: o cristal "materializa" e uma luz passa por ele ----------
+     Uma vez por bloco, quando ele entra na tela. Sem GSAP ou com "reduzir movimento", nada acontece. */
+  let mmCristal = null;
+  U.cristal = function (ligar) {
+    const g = window.gsap;
+    if (mmCristal) { mmCristal.revert(); mmCristal = null; }
+    if (!ligar || !g || !window.IntersectionObserver) return;
+    mmCristal = g.matchMedia();
+    mmCristal.add("(prefers-reduced-motion: no-preference)", () => {
+      const SEL = ".cartao, .item-card .etiqueta-corpo, .destaques, .modal";
+      const vistos = new WeakSet();
+      let fila = [], quadro = 0;
+      const tocar = () => {
+        quadro = 0;
+        fila.forEach((el, i) => {
+          const atraso = Math.min(i, 8) * 0.06;
+          g.fromTo(el, { "--varrer": "-70%", "--brilho": 1 }, { "--varrer": "170%", duration: 1.15, delay: atraso + 0.08, ease: "power2.inOut",
+            onComplete: () => g.set(el, { "--brilho": 0 }) });
+          if (!el.classList.contains("modal")) {
+            g.fromTo(el, { scale: 0.985, filter: "blur(3px)" }, { scale: 1, filter: "blur(0px)", duration: 0.6, delay: atraso, ease: "expo.out", clearProps: "transform,filter" });
+          }
+        });
+        fila = [];
+      };
+      const io = new IntersectionObserver((ents) => {
+        ents.forEach((e) => { if (e.isIntersecting && !vistos.has(e.target)) { vistos.add(e.target); io.unobserve(e.target); fila.push(e.target); } });
+        if (fila.length && !quadro) quadro = requestAnimationFrame(tocar);
+      }, { threshold: 0.15 });
+      const olhar = (raiz) => { (raiz.matches && raiz.matches(SEL) ? [raiz] : []).concat([...(raiz.querySelectorAll ? raiz.querySelectorAll(SEL) : [])]).forEach((el) => { if (!vistos.has(el)) io.observe(el); }); };
+      olhar(document.body);
+      const mo = new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n.nodeType === 1) olhar(n); })));
+      mo.observe(document.body, { childList: true, subtree: true });
+      return () => { io.disconnect(); mo.disconnect(); };
+    });
+  };
+
   window.U = U;
 })();
