@@ -1,6 +1,6 @@
-/* app.js — app do barbeiro (dono), do barbeiro associado e do caixa.
-   Fase 1: entrada (senha, primeiro acesso, esqueci a senha, código da equipe),
-   equipe e configurações (link e QR Code do cliente). */
+/* app.js — painel do negócio (dono), do barbeiro associado e do caixa.
+   Entrada (senha, primeiro acesso, esqueci a senha, código da equipe), abas por tipo de negócio,
+   equipe e configurações (link e QR Code do cliente, aparência: cor, estilo e fonte). */
 (function () {
   "use strict";
   const { $, $$, esc } = U;
@@ -20,6 +20,9 @@
   const ehDono = () => perfil && perfil.papel === "dono";
   const leitura = () => perfil && !perfil.licenca_ok;
   const NOME_PAPEL = { dono: "Administrador", associado: "Barbeiro associado", caixa: "Caixa" };
+  // o que este tipo de negócio usa (tabela tipos_negocio) e como ele se chama nos textos
+  const M = () => U.modulos(perfil && perfil.modulos);
+  const V = () => U.vocab((barb && barb.tipo ? barb : perfil && perfil.barbearia) || null);
 
   function gerarCodigo() {
     const b = crypto.getRandomValues(new Uint8Array(8));
@@ -40,7 +43,7 @@
   function ligarInstalar() { const b = $("#instalar"); if (b) b.onclick = () => U.instalar(); }
 
   function telaLogin() {
-    moldura("Painel da Barbearia", "Entre para gerenciar sua barbearia", `
+    moldura("Painel", "Entre para gerenciar o seu negócio", `
       <form id="f" novalidate>
         <div class="campo"><label for="email">E-mail</label><input id="email" type="email" autocomplete="username" inputmode="email"></div>
         <div class="campo"><label for="senha">Senha</label><input id="senha" type="password" autocomplete="current-password"></div>
@@ -51,7 +54,7 @@
       <div class="separador">ou</div>
       <div class="acoes-entrada">
         <button class="btn sec bloco" id="primeiro" type="button">Primeiro acesso (tenho um código)</button>
-        <button class="btn sec bloco" id="equipe" type="button">Sou da equipe (barbeiro ou caixa)</button>
+        <button class="btn sec bloco" id="equipe" type="button">Sou da equipe (tenho um código)</button>
       </div>${botaoInstalar()}`);
     $("#f").onsubmit = async (e) => {
       e.preventDefault();
@@ -138,7 +141,7 @@
   }
 
   function telaEquipe() {
-    moldura("Entrar com código", "Barbeiro associado ou caixa: digite o código que o dono da barbearia te passou.", `
+    moldura("Entrar com código", "Equipe (barbeiro associado ou caixa): digite o código que o dono do negócio te passou.", `
       <form id="f" novalidate>
         <div class="campo"><label for="codigo">Código de acesso</label><input id="codigo" class="codigo-input" maxlength="9" autocomplete="off" autocapitalize="characters" placeholder="ABCD2345"></div>
         <div class="campo"><label class="linha-check"><input id="manter" type="checkbox" checked> Manter-me conectado</label></div>
@@ -171,7 +174,7 @@
     if (!perfil) {
       await S.sair();
       telaLogin();
-      U.aviso("Esta conta não está ligada a nenhuma barbearia.", "erro");
+      U.aviso("Esta conta não está ligada a nenhum negócio.", "erro");
       return;
     }
     try {
@@ -184,7 +187,7 @@
   }
 
   function aplicarTema(b) {
-    document.documentElement.dataset.tema = (b && b.tema) || "claro";
+    U.aparencia(b);
     const raizCss = document.documentElement.style;
     if (b && b.cor_barra) {
       raizCss.setProperty("--cor-barra", b.cor_barra);
@@ -226,9 +229,11 @@
   }
 
   function abasDoPapel() {
-    if (ehDono()) return [["fila", "Fila"], ["caixa", "Caixa"], ["cardapio", "Serviços & Produtos"], ["horario", "Horário"], ["equipe", "Equipe"], ["pagamento", "Pagamento"], ["config", "Configurações"]];
-    if (perfil.papel === "caixa") return [["fila", "Fila"], ["caixa", "Caixa"], ["cardapio", "Serviços & Produtos"], ["config", "Configurações"]];
-    return [["fila", "Fila"], ["config", "Configurações"]];
+    // sem fila (ex.: loja), a primeira aba mostra só os pedidos do app para aprovar
+    const fila = ["fila", M().fila ? "Fila" : "Pedidos"], cardapio = ["cardapio", M().servicos ? "Serviços & Produtos" : "Produtos"];
+    if (ehDono()) return [fila, ["caixa", "Caixa"], cardapio, ["horario", "Horário"], ["equipe", "Equipe"], ["pagamento", "Pagamento"], ["config", "Configurações"]];
+    if (perfil.papel === "caixa") return [fila, ["caixa", "Caixa"], cardapio, ["config", "Configurações"]];
+    return [fila, ["config", "Configurações"]];
   }
 
   function desenharCasca() {
@@ -236,7 +241,7 @@
     raiz.innerHTML = `
       ${leitura() ? `<div class="faixa-leitura">${b.ativo ? "Plano vencido" : "Acesso inativado"} — o painel está só para consulta. Fale com o suporte para renovar.</div>` : ""}
       <header class="topo-app"><div class="barra">
-        <img class="logo" src="${esc(b.logo192_url || "icones/icone-192.png")}" alt="">
+        ${b.logo192_url ? `<img class="logo" src="${esc(b.logo192_url)}" alt="">` : `<span class="logo logo-vazio" aria-hidden="true">${esc(b.nome.trim().split(/\s+/).map((x) => x[0]).slice(0, 2).join("").toUpperCase())}</span>`}
         <div class="topo-textos"><div class="nome">${esc(b.nome)}</div><div class="papel">${esc(perfil.papel === "dono" ? NOME_PAPEL.dono : perfil.nome + " · " + NOME_PAPEL[perfil.papel])}</div></div>
         <div class="topo-direita"><span id="status-topo" class="status-pill"></span><span id="online-topo" class="online oculto"></span></div>
         <button class="btn mini btn-informar" id="informar-pag"${leitura() ? " disabled" : ""}>${U.icone("recibo")}Informar pagamentos</button>
@@ -275,25 +280,27 @@
 
   /* ---------- equipe (só dono) ---------- */
   async function telaEquipeDono() {
+    const comBarbeiros = M().barbeiros;
     $("#corpo").innerHTML = `
-      <section class="cartao" id="perfil-dono"><h2>Você também atende?</h2>
+      ${comBarbeiros ? `<section class="cartao" id="perfil-dono"><h2>Você também atende?</h2>
         <label class="linha-check"><input type="checkbox" id="pd-atende"${barb.dono_atende !== false ? " checked" : ""}${leitura() ? " disabled" : ""}> Sim, eu também corto: quero ter a minha fila</label>
         <div class="form-equipe" style="margin-top:.75rem">
           <div class="campo"><label for="pd-nome">Seu nome na fila</label><input id="pd-nome" maxlength="40" value="${esc(barb.dono_nome || "")}" placeholder="${esc(barb.nome)}"${leitura() ? " disabled" : ""}></div>
           <div class="campo"><label for="pd-foto">Sua foto (opcional)</label><div class="logo-escolha">${barb.dono_foto_url ? `<img class="foto-mini" src="${esc(barb.dono_foto_url)}" alt="">` : ""}<input id="pd-foto" type="file" accept="image/*"${leitura() ? " disabled" : ""}></div></div>
         </div>
-        <button class="btn sec" id="pd-salvar"${leitura() ? " disabled" : ""}>Salvar</button></section>
-      <section class="cartao" style="margin-top:1rem"><h2>Cadastrar na equipe</h2>
-        <p class="pequeno suave">O barbeiro associado só vê a fila dele e os pedidos de corte e barba. O caixa vê o caixa e ajuda a organizar a fila. Nenhum dos dois edita o seu site.</p>
+        <button class="btn sec" id="pd-salvar"${leitura() ? " disabled" : ""}>Salvar</button></section>` : ""}
+      <section class="cartao"${comBarbeiros ? ' style="margin-top:1rem"' : ""}><h2>Cadastrar na equipe</h2>
+        <p class="pequeno suave">${comBarbeiros ? "O barbeiro associado só vê a fila dele e os pedidos de corte e barba. O caixa vê o caixa e ajuda a organizar a fila. Nenhum dos dois edita o seu site."
+          : "O caixa informa as vendas, aprova os pedidos do app, vê o caixa e cuida dos produtos."}</p>
         <form id="f-eq" class="form-equipe" novalidate>
-          <div class="campo"><label for="eq-papel">Função</label><select id="eq-papel"><option value="associado">Barbeiro associado</option><option value="caixa">Caixa</option></select></div>
+          <div class="campo"><label for="eq-papel">Função</label><select id="eq-papel">${comBarbeiros ? `<option value="associado">Barbeiro associado</option>` : ""}<option value="caixa">Caixa</option></select></div>
           <div class="campo"><label for="eq-nome">Nome</label><input id="eq-nome" maxlength="60"></div>
           <div class="campo"><label for="eq-tel" id="eq-tel-rot">Telefone / WhatsApp (opcional)</label><input id="eq-tel" type="tel" inputmode="tel" placeholder="(91) 98888-7777"></div>
           <div class="campo" id="eq-foto-campo"><label for="eq-foto">Foto (opcional)</label><input id="eq-foto" type="file" accept="image/*"></div>
           <div><button class="btn" type="submit"${leitura() ? " disabled" : ""}>Salvar e gerar código</button></div>
         </form></section>
       <div class="grade-2" style="margin-top:1rem">
-        <section class="cartao"><h2>Barbeiros associados</h2><div class="membros" id="l-associado"><p class="suave pequeno">Carregando…</p></div></section>
+        ${comBarbeiros ? `<section class="cartao"><h2>Barbeiros associados</h2><div class="membros" id="l-associado"><p class="suave pequeno">Carregando…</p></div></section>` : ""}
         <section class="cartao"><h2>Caixa</h2><div class="membros" id="l-caixa"><p class="suave pequeno">Carregando…</p></div></section>
       </div>`;
     const ajustar = () => {
@@ -302,7 +309,7 @@
       $("#eq-foto-campo").classList.toggle("oculto", caixa);
     };
     $("#eq-papel").onchange = ajustar; ajustar();
-    $("#pd-salvar").onclick = (e) => U.ocupado(e.target, async () => {
+    if ($("#pd-salvar")) $("#pd-salvar").onclick = (e) => U.ocupado(e.target, async () => {
       try {
         const muda = { dono_atende: $("#pd-atende").checked, dono_nome: $("#pd-nome").value.trim() || null };
         const arq = $("#pd-foto").files[0];
@@ -447,7 +454,7 @@
     $("#corpo").innerHTML = `
       ${ehDono() ? blocoConfigDono() : ""}
       <section class="cartao" id="cfg-cliente"><h2>Link do cliente</h2>
-        <p class="pequeno suave">Seus clientes abrem este link ou leem o QR Code para ver cortes, produtos e a fila — e podem instalar o app da <b>${esc(b.nome)}</b> no celular ou no computador, com o seu logo.</p>
+        <p class="pequeno suave">Seus clientes abrem este link ou leem o QR Code para ${M().fila ? "ver cortes, produtos e a fila" : "ver os produtos e fazer pedidos"} — e podem instalar o app ${V().da} <b>${esc(b.nome)}</b> no celular ou no computador, com o seu logo.</p>
         <div id="qr-cliente">${U.qrSvg(link, 220)}</div>
         <p class="link-texto" id="link-cliente">${esc(link)}</p>
         <div class="linha-acoes">
@@ -467,7 +474,8 @@
           <button class="btn sec" id="sair" style="margin-left:.25rem">Sair</button></section>
       </div>`;
     $("#c-copiar").onclick = () => U.copiar(link);
-    $("#c-whats").onclick = () => U.whatsapp(`Agora a *${b.nome}* tem app! Veja cortes, produtos e a fila, e peça seu corte por aqui: ${link}`);
+    $("#c-whats").onclick = () => U.whatsapp(M().fila ? `Agora a *${b.nome}* tem app! Veja cortes, produtos e a fila, e peça seu corte por aqui: ${link}`
+      : `Agora a *${b.nome}* tem app! Veja os produtos e faça seu pedido por aqui: ${link}`);
     $("#c-qr").onclick = () => {
       const img = new Image(); img.crossOrigin = "anonymous";
       const fim = () => U.baixar(U.qrPng(link, b.nome, img.naturalWidth ? img : null, U.FRASE_QR) || U.qrPng(link, b.nome, null, U.FRASE_QR), `qrcode-${b.slug}.png`);
@@ -480,12 +488,11 @@
     if ($("#trocar-senha")) $("#trocar-senha").onclick = trocarSenha;
   }
 
-  const TEMAS = [["claro", "Claro", "#e8f2fc", "#1e6fbf"], ["escuro", "Escuro", "#141311", "#c9a96a"], ["vermelho", "Vermelho", "#ffe8ea", "#d00018"], ["verde", "Verde", "#f2f7f3", "#2f6e47"], ["amarelo", "Amarelo", "#fdf8ea", "#d9a521"]];
 
   function blocoConfigDono() {
     const st = HORARIO.situacao(barb), tem = HORARIO.temHorario(barb.horarios);
     const prox = tem ? HORARIO.proximaMudanca(barb.horarios, barb.fuso) : null;
-    return `<section class="cartao" id="cfg-status"><h2>Status da barbearia</h2>
+    return `<section class="cartao" id="cfg-status"><h2>Status ${V().da} ${V().negocio}</h2>
         <p><span class="status-pill ${st.aberto ? "aberto" : st.motivo === "almoco" ? "almoco" : "fechado"}">${esc(HORARIO.texto(st))}</span></p>
         <p class="pequeno suave">${st.manual
           ? (st.ate ? `Você mudou manualmente. Volta ao automático em <b>${st.ate.toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}</b>.` : "Você mudou manualmente. Fica assim até você mudar de novo.")
@@ -497,16 +504,16 @@
         </div>
         ${!st.manual && tem && prox ? `<p class="pequeno suave" style="margin-top:.6rem">Se mudar agora, volta ao automático em ${prox.toLocaleString("pt-BR", { weekday: "short", hour: "2-digit", minute: "2-digit" })}.</p>` : ""}
       </section>
+      <section class="cartao" id="cfg-aparencia" style="margin-top:1rem"><h2>Aparência</h2>
+        <p class="pequeno suave">Vale para este painel e para o app dos seus clientes.</p>
+        ${U.aparenciaHtml({ tema: barb.tema, estilo: barb.estilo, fonte: barb.fonte }, leitura())}</section>
       <div class="grade-2" style="margin:1rem 0">
-        <section class="cartao"><h2>Tema</h2>
-          <div class="temas">${TEMAS.map(([id, nome, f, d]) => `<button class="tema-op" data-tema="${id}" aria-pressed="${barb.tema === id}"${leitura() ? " disabled" : ""}>
-            <span class="amostra" aria-hidden="true"><i></i><b></b></span>${nome}</button>`).join("")}</div></section>
         <section class="cartao"><h2>Ver movimentação</h2>
           <label class="linha-check"><input type="checkbox" id="cfg-mov"${barb.ver_movimentacao ? " checked" : ""}${leitura() ? " disabled" : ""}> Mostrar quantas pessoas estão no site agora</label>
           <p class="pequeno suave" style="margin-top:.5rem">O número aparece no topo do painel e se atualiza a cada 30 segundos.</p></section>
-        <section class="cartao"><h2>Fila no app do cliente</h2>
+        ${M().fila ? `<section class="cartao"><h2>Fila no app do cliente</h2>
           <label class="linha-check"><input type="checkbox" id="cfg-fila"${barb.esconder_fila ? " checked" : ""}${leitura() ? " disabled" : ""}> Esconder a fila dos clientes</label>
-          <p class="pequeno suave" style="margin-top:.5rem">Com a fila escondida, o cliente vê só os destaques, os cortes e os produtos. Ele continua podendo pedir e agendar, e você continua vendo a fila aqui no painel.</p></section>
+          <p class="pequeno suave" style="margin-top:.5rem">Com a fila escondida, o cliente vê só os destaques, os cortes e os produtos. Ele continua podendo pedir e agendar, e você continua vendo a fila aqui no painel.</p></section>` : ""}
       </div>`;
   }
 
@@ -515,18 +522,19 @@
       try {
         const prox = HORARIO.proximaMudanca(barb.horarios, barb.fuso);
         await salvarBarbearia({ status_manual: status, status_ate: status && prox ? prox.toISOString() : null });
-        U.aviso(status ? (status === "aberto" ? "Barbearia aberta." : "Barbearia fechada.") : "Seguindo o horário de novo.");
+        U.aviso(status ? `${V().Negocio} ${status === "aberto" ? "aberta" : "fechada"}.` : "Seguindo o horário de novo.");
         telaConfig();
       } catch (err) { U.aviso(err.message, "erro"); }
     };
     $("#st-abrir").onclick = () => mudarStatus("aberto");
     $("#st-fechar").onclick = () => mudarStatus("fechado");
     if ($("#st-auto")) $("#st-auto").onclick = () => mudarStatus(null);
-    $$(".tema-op").forEach((bt) => (bt.onclick = async () => {
-      try { await salvarBarbearia({ tema: bt.dataset.tema }); telaConfig(); U.aviso("Tema aplicado no painel e no site dos clientes."); }
-      catch (err) { U.aviso(err.message, "erro"); }
-    }));
-    $("#cfg-fila").onchange = async (e) => {
+    const NOMES_AP = { tema: "Cor", estilo: "Estilo", fonte: "Fonte" };
+    U.ligarAparencia($("#cfg-aparencia"), async (campo, valor) => {
+      await salvarBarbearia({ [campo]: valor });
+      U.aviso(`${NOMES_AP[campo]} aplicad${campo === "estilo" ? "o" : "a"} no painel e no app dos clientes.`);
+    });
+    if ($("#cfg-fila")) $("#cfg-fila").onchange = async (e) => {
       try { await salvarBarbearia({ esconder_fila: e.target.checked }); U.aviso(e.target.checked ? "Fila escondida na tela do cliente." : "Fila visível na tela do cliente."); }
       catch (err) { e.target.checked = !e.target.checked; U.aviso(err.message, "erro"); }
     };
@@ -556,7 +564,7 @@
     if (!ok) return;
     await S.sair(); perfil = null; barb = null; aba = null; pendentesConhecidos = null;
     clearInterval(relogioStatus); clearInterval(vigia);
-    document.documentElement.dataset.tema = "claro"; document.documentElement.style.cssText = "";
+    U.aparencia(null); document.documentElement.style.cssText = "";
     telaLogin();
   }
 
@@ -566,7 +574,7 @@
     if (!bt) return;
     if (n === undefined) n = bt.dataset.n ? Number(bt.dataset.n) : 0;
     bt.dataset.n = n;
-    bt.innerHTML = "Fila" + (n ? ` <span class="contador-pend">${n}</span>` : "");
+    bt.innerHTML = (M().fila ? "Fila" : "Pedidos") + (n ? ` <span class="contador-pend">${n}</span>` : "");
   }
   async function verificarPedidos(veioDoAviso) {
     if (!perfil || document.visibilityState !== "visible") return;
@@ -601,6 +609,7 @@
   window.APP = {
     S, esc,
     perfil: () => perfil,
+    modulos: M, vocab: V,
     b: () => barb,
     leitura, ehDono,
     salvarBarbearia,

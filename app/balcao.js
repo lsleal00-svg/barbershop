@@ -110,12 +110,13 @@
     tela = document.createElement("div");
     tela.className = "pdv";
     tela.setAttribute("role", "dialog"); tela.setAttribute("aria-modal", "true"); tela.setAttribute("aria-label", "Informar pagamentos");
+    const comServicos = itens.some(ehServico);
     tela.innerHTML = `
       <header class="pdv-topo"><div class="pdv-barra">
         <h1>Informar pagamentos</h1>
         <button class="fechar pdv-fechar" id="pdv-fechar" aria-label="Fechar">${U.icone("fechar")}</button></div>
-        <p class="pdv-sub">Para quem pagou no balcão sem usar o app. Toque nos cortes e produtos e feche a comanda.</p>
-        <div class="busca-linha pdv-busca"><input id="pdv-busca" type="search" placeholder="Buscar corte, barba ou produto…" aria-label="Buscar" autocomplete="off"></div>
+        <p class="pdv-sub">Para quem pagou no balcão sem usar o app. Toque nos ${comServicos ? "cortes e produtos" : "produtos"} e feche a comanda.</p>
+        <div class="busca-linha pdv-busca"><input id="pdv-busca" type="search" placeholder="${comServicos ? "Buscar corte, barba ou produto…" : "Buscar produto…"}" aria-label="Buscar" autocomplete="off"></div>
         <nav class="barra-cat" id="pdv-cats" aria-label="Categorias"></nav>
       </header>
       <main class="pdv-corpo" id="pdv-lista"></main>
@@ -213,7 +214,7 @@
       ? `<button class="pdv-resumo" id="pdv-ver" aria-label="Ver a comanda"><span class="pdv-qtd num">${n}</span>
            <span class="pdv-txt"><small>Comanda · ${n} ${n === 1 ? "item" : "itens"}</small><b class="num">${C.dinheiro(totalComanda())}</b></span></button>
          <button class="btn pdv-fechar-conta" id="pdv-receber">Fechar e receber</button>`
-      : `<p class="pequeno pdv-dica">Toque em <b>Informar serviço</b> ou <b>Informar compra</b> para montar a comanda.</p>`;
+      : `<p class="pequeno pdv-dica">Toque em ${itens.some(ehServico) ? "<b>Informar serviço</b> ou " : ""}<b>Informar compra</b> para montar a comanda.</p>`;
     if (n) { $("#pdv-ver", el).onclick = receber; $("#pdv-receber", el).onclick = receber; }
   }
 

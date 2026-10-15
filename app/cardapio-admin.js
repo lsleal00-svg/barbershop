@@ -41,9 +41,9 @@
           ${A().ehDono() ? `<button class="btn mini sec" id="cor-barra"${dis()}>${U.icone("paleta")}Cor da barra</button>` : ""}</div>` : ""}
         ${destaques.length ? `<section class="destaques" id="destaques" style="margin:1rem 0"></section>` : ""}
         ${!cats.length ? `<div class="vazio-cardapio" style="margin-top:1rem"><p><b>Comece criando uma categoria.</b></p>
-            <p class="pequeno">Ex.: “Cortes”, “Barba” e “Química” (tipo Serviço) e “Bonés” ou “Bebidas” (tipo Produto). Sem categoria não dá para cadastrar itens.</p>
+            <p class="pequeno">${temServicos() ? "Ex.: “Cortes”, “Barba” e “Química” (tipo Serviço) e “Bonés” ou “Bebidas” (tipo Produto)." : "Ex.: “Bonés”, “Bebidas”, “Utilidades”, “Presentes”."} Sem categoria não dá para cadastrar itens.</p>
             <button class="btn" id="nova-cat-2"${dis()}>Criar categoria</button></div>`
-        : `<div class="cab-cat"><h2>${cat.icone ? esc(cat.icone) + " " : ""}${esc(cat.nome)} <span class="selo">${esc(C.TIPOS[cat.tipo])}</span></h2>
+        : `<div class="cab-cat"><h2>${cat.icone ? esc(cat.icone) + " " : ""}${esc(cat.nome)} ${temServicos() ? `<span class="selo">${esc(C.TIPOS[cat.tipo])}</span>` : ""}</h2>
             <button class="btn" id="novo-item"${dis()}>＋ ${esc(C.NOVO[cat.tipo])}</button></div>
           ${lista.length ? `<div class="grade-itens">${lista.map((it) => C.cartao(it, cat.tipo, { admin: true, acoes: acoesItem(it) })).join("")}</div>`
             : `<div class="vazio-cardapio">Nada cadastrado em “${esc(cat.nome)}” ainda.</div>`}`}
@@ -71,15 +71,16 @@
   }
 
   /* ---------- categorias ---------- */
+  const temServicos = () => !A().modulos || A().modulos().servicos;
   function novaCategoria() {
-    const padrao = cats.some((c) => !C.ehProduto(c.tipo)) ? "outros" : "servico";
+    const padrao = !temServicos() ? "outros" : cats.some((c) => !C.ehProduto(c.tipo)) ? "outros" : "servico";
     let icone = null;
     const aberto = U.modal("Nova categoria", `
-      <div class="campo"><label for="cat-nome">Nome da categoria</label><input id="cat-nome" maxlength="40" placeholder="Ex.: Cortes, Barba, Química, Bonés"></div>
-      <div class="campo"><label>Tipo</label><div class="tipos-cat">
+      <div class="campo"><label for="cat-nome">Nome da categoria</label><input id="cat-nome" maxlength="40" placeholder="${temServicos() ? "Ex.: Cortes, Barba, Química, Bonés" : "Ex.: Bonés, Bebidas, Utilidades"}"></div>
+      ${!temServicos() ? `<input type="radio" name="cat-tipo" value="outros" checked hidden>` : `<div class="campo"><label>Tipo</label><div class="tipos-cat">
         ${[["servico", "Serviço", "Cortes, barba, sobrancelha… Entra na fila e pode ser agendado."], ["outros", "Produto", "Bonés, bebidas, pomadas… Vai para o carrinho."]].map(([t, rot, dica]) =>
           `<label class="tipo-op"><input type="radio" name="cat-tipo" value="${t}"${t === padrao ? " checked" : ""}><span><b>${rot}</b><small>${dica}</small></span></label>`).join("")}</div>
-        <p class="pequeno suave" style="margin-top:.4rem">Pode criar quantas categorias quiser de cada tipo.</p></div>
+        <p class="pequeno suave" style="margin-top:.4rem">Pode criar quantas categorias quiser de cada tipo.</p></div>`}
       <div class="campo"><label>Ícone (opcional)</label><div class="icones">${C.ICONES.map((ic) => `<button type="button" class="icone-op" data-ic="${ic}" aria-pressed="false">${ic}</button>`).join("")}</div></div>`, [
       { rotulo: "Cancelar", classe: "sec", valor: false },
       { rotulo: "Salvar", antes: async (m) => {
@@ -126,7 +127,7 @@
       const n = itens.filter((i) => i.categoria_id === c.id).length;
       return `<div class="cat-linha" data-id="${c.id}"><span class="cat-ic">${esc(c.icone || "•")}</span>
         <input value="${esc(c.nome)}" maxlength="40" aria-label="Nome da categoria">
-        <select aria-label="Tipo da categoria" data-tipo>${[["servico", "Serviço"], ["outros", "Produto"]].map(([t, rot]) => `<option value="${t}"${(C.ehProduto(c.tipo) ? "outros" : "servico") === t ? " selected" : ""}>${rot}</option>`).join("")}</select>
+        <select aria-label="Tipo da categoria" data-tipo${temServicos() ? "" : " hidden"}>${[["servico", "Serviço"], ["outros", "Produto"]].map(([t, rot]) => `<option value="${t}"${(C.ehProduto(c.tipo) ? "outros" : "servico") === t ? " selected" : ""}>${rot}</option>`).join("")}</select>
         <span class="pequeno suave">${n} ite${n === 1 ? "m" : "ns"}</span>
         <button class="btn mini sec" data-a="salvar">Salvar</button><button class="btn mini perigo" data-a="excluir">Excluir</button></div>`;
     };

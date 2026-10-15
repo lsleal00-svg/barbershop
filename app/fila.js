@@ -30,7 +30,7 @@
 
   async function tela(corpo) {
     corpoAtual = corpo;
-    corpo.innerHTML = `<p class="suave">Carregando a fila…</p>`;
+    corpo.innerHTML = `<p class="suave">${A().modulos().fila ? "Carregando a fila…" : "Carregando os pedidos…"}</p>`;
     try { await carregar(); } catch (err) { corpo.innerHTML = `<p class="suave">${esc(err.message)}</p>`; return; }
     desenhar();
     clearInterval(timer);
@@ -48,26 +48,27 @@
     const dis = ro ? " disabled" : "";
     const pend = dados.pendentes, ver = dados.papel !== "associado";
     const nAg = dados.agendamentos.length;
+    const mod = A().modulos();   // sem fila (ex.: loja): a aba vira só "Pedidos para aprovar"
     corpo.innerHTML = `<div class="fila-painel">
-      <div class="fila-ferramentas">
+      ${!mod.agendamento ? "" : `<div class="fila-ferramentas">
         <button class="btn" id="agendar-corte"${dis}>${U.icone("calendario")}Agendar um corte</button>
         <button class="btn sec" id="ver-agendados">${U.icone("lista")}Ver cortes agendados${nAg ? ` <span class="contador-pend contador-neutro">${nAg}</span>` : ""}</button>
-      </div>
+      </div>`}
       ${blocoAvisos()}
       <section class="cartao"><h2>Pedidos para aprovar ${pend.length ? `<span class="contador-pend">${pend.length}</span>` : ""}</h2>
         ${pend.length ? pend.map((p) => cartaoPendente(p, ver, dis)).join("") : `<p class="suave pequeno">Nenhum pedido esperando. Quando chegar, toca um aviso.</p>`}
       </section>
-      ${(dados.filas || []).map((f) => `<section class="cartao fila-de"><h2>Fila de ${esc(f.nome)}</h2>
+      ${!mod.fila ? "" : (dados.filas || []).map((f) => `<section class="cartao fila-de"><h2>Fila de ${esc(f.nome)}</h2>
         ${f.fila.length ? f.fila.map((p, i) => cartaoFila(p, i, f.fila, dis)).join("") : `<p class="suave pequeno">Ninguém na fila.</p>`}</section>`).join("")}
-      <section class="cartao" id="proximos-agendamentos"><h2>Próximos agendamentos</h2>
+      ${!mod.agendamento ? "" : `<section class="cartao" id="proximos-agendamentos"><h2>Próximos agendamentos</h2>
         ${dados.agendamentos.length ? dados.agendamentos.map((p) => `<div class="pedido-linha" data-id="${p.id}">
           <div><b>${esc(quando(p.agendado_para))}</b> · ${esc(p.cliente_nome)} ${zapLink(p.cliente_whatsapp)}
             <div class="pequeno suave">${itensTxt(p)} · ${C.dinheiro(p.total)} · ${FORMAS[p.forma]}${ver ? " · com " + esc(nomeBarbeiro(p.barbeiro_id)) : ""}</div></div>
           <button class="btn mini sec" data-a="remover"${dis}>Cancelar</button></div>`).join("") : `<p class="suave pequeno">Nenhum agendamento.</p>`}
-      </section></div>`;
+      </section>`}</div>`;
     $$("[data-a]", corpo).forEach((bt) => (bt.onclick = () => agir(bt.dataset.a, bt.closest("[data-id]").dataset.id, bt)));
-    $("#agendar-corte", corpo).onclick = () => agendarCorte();
-    $("#ver-agendados", corpo).onclick = () => verAgendados();
+    if ($("#agendar-corte", corpo)) $("#agendar-corte", corpo).onclick = () => agendarCorte();
+    if ($("#ver-agendados", corpo)) $("#ver-agendados", corpo).onclick = () => verAgendados();
     ligarAvisos();
   }
 

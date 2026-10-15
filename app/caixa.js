@@ -6,7 +6,7 @@
   const C = CARDAPIO;
   const A = () => window.APP;
   const FORMAS = { pix: "Pix", dinheiro: "Dinheiro", prazo: "À prazo", misto: "Várias formas", debito: "Débito", credito: "Crédito" };
-  let d7 = null, secao = "cortes", corpoAtual = null, relatorio = { modo: "dia" };
+  let d7 = null, secao = "cortes", corpoAtual = null, relatorio = { modo: "dia" }, heroiContado = false;
 
   /* ---------- datas no relógio da barbearia ---------- */
   const fuso = () => (d7 && d7.fuso) || "America/Sao_Paulo";
@@ -58,7 +58,10 @@
     const corpo = corpoAtual;
     const hoje = d7.hoje, rec = recebidos(d7.pedidos, hoje, hoje);
     const pix = somaPix(rec), din = somaDin(rec), cart = somaCartao(rec), taxa = somaTaxa(rec);
-    const SECOES = [["cortes", "Gráficos de serviços"], ["produtos", "Gráficos de produtos"], ["relatorios", "Relatórios"], ["inadimplencia", `Inadimplência${devendo(d7.pedidos).length ? ` (${devendo(d7.pedidos).length})` : ""}`]];
+    const mod = A().modulos ? A().modulos() : { graficos_servicos: true, inadimplencia: true };
+    const SECOES = [["cortes", "Gráficos de serviços"], ["produtos", "Gráficos de produtos"], ["relatorios", "Relatórios"], ["inadimplencia", `Inadimplência${devendo(d7.pedidos).length ? ` (${devendo(d7.pedidos).length})` : ""}`]]
+      .filter(([id]) => (id !== "cortes" || mod.graficos_servicos) && (id !== "inadimplencia" || mod.inadimplencia));
+    if (!SECOES.some(([id]) => id === secao)) secao = SECOES[0][0];
     corpo.innerHTML = `
       <section class="cartao caixa-hoje" aria-label="Total do caixa hoje">
         <div class="rotulo-kpi">Total em caixa hoje · ${esc(diaSemana(hoje))} ${esc(br(hoje))}</div>
@@ -72,6 +75,7 @@
         <nav class="caixa-menu" aria-label="Seções do caixa">${SECOES.map(([id, t]) => `<button data-sec="${id}" aria-current="${id === secao}">${t}</button>`).join("")}</nav>
         <div class="caixa-secao" id="caixa-secao"></div>
       </div>`;
+    if (!heroiContado) { heroiContado = true; GRAFICOS.contar($(".heroi", corpo), soma(rec), C.dinheiro); }
     $$(".caixa-menu button", corpo).forEach((bt) => (bt.onclick = () => { secao = bt.dataset.sec; desenhar(); }));
     ({ cortes: secaoCortes, produtos: secaoProdutos, relatorios: secaoRelatorios, inadimplencia: secaoInadimplencia })[secao]($("#caixa-secao", corpo));
   }
@@ -79,29 +83,9 @@
   /* ---------- peças visuais ---------- */
   const tile = (rotulo, valor, nota) => `<div class="kpi"><div class="rotulo-kpi">${rotulo}</div><div class="valor-kpi">${valor}</div>${nota ? `<div class="nota-kpi">${nota}</div>` : ""}</div>`;
 
-  /* Colunas (um único dado por dia): barras finas, ponta arredondada, valor no topo e na dica. */
-  function colunas(dados, formatar) {
-    const max = Math.max(1, ...dados.map((d) => d.v));
-    const L = 320, A_ = 150, base = 128, banda = L / dados.length, larg = Math.min(24, banda * 0.55);
-    const barras = dados.map((d, i) => {
-      const h = d.v ? Math.max(4, (d.v / max) * (base - 22)) : 0, x = i * banda + (banda - larg) / 2, y = base - h;
-      const r = Math.min(4, h);
-      const caminho = h ? `M${x},${base} V${y + r} Q${x},${y} ${x + r},${y} H${x + larg - r} Q${x + larg},${y} ${x + larg},${y + r} V${base} Z` : "";
-      return `<g class="col" tabindex="0" aria-label="${esc(d.rot)}: ${esc(formatar(d.v))}">
-        <rect class="alvo" x="${i * banda}" y="0" width="${banda}" height="${A_}" fill="transparent"><title>${esc(d.rot)}: ${esc(formatar(d.v))}</title></rect>
-        ${caminho ? `<path d="${caminho}" class="marca"/>` : ""}
-        ${d.v ? `<text x="${x + larg / 2}" y="${y - 5}" text-anchor="middle" class="rotulo-valor">${esc(formatar(d.v).replace("R$", "").trim())}</text>` : ""}
-        <text x="${x + larg / 2}" y="${base + 16}" text-anchor="middle" class="rotulo-eixo">${esc(d.curto)}</text></g>`;
-    }).join("");
-    return `<svg class="grafico" viewBox="0 0 ${L} ${A_}" role="img"><line x1="0" x2="${L}" y1="${base}" y2="${base}" class="eixo"/>${barras}</svg>`;
-  }
-  /* Barras deitadas para o ranking (nomes longos cabem à esquerda). */
-  function barras(dados, formatar) {
-    const max = Math.max(1, ...dados.map((d) => d.v));
-    return `<div class="ranking">${dados.map((d) => `<div class="rk-linha" title="${esc(d.rot)}: ${esc(formatar(d.v))}">
-      <span class="rk-nome">${esc(d.rot)}</span><span class="rk-trilho"><span class="rk-barra" style="width:${Math.max(2, (d.v / max) * 100)}%"></span></span>
-      <span class="rk-valor">${esc(formatar(d.v))}</span></div>`).join("")}</div>`;
-  }
+  /* gráficos: app/graficos.js (SVG, dica, animação GSAP) */
+  const colunas = (dados, formatar, titulo) => GRAFICOS.colunas(dados, formatar, { titulo });
+  const barras = (dados, formatar) => GRAFICOS.barras(dados, formatar);
   const tabela = (cab, linhas, classe) => `<div class="tabela-rolar"><table class="tabela${classe ? " " + classe : ""}"><thead><tr>${cab.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${linhas.map((l) => `<tr>${l.map((c, i) => `<td data-rot="${esc(String(cab[i] || "").replace(/<[^>]+>/g, ""))}">${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
   function alternarTabela(raiz) {
     $$("[data-ver]", raiz).forEach((bt) => (bt.onclick = () => {
@@ -117,6 +101,7 @@
     const pix = somaPix(rec), din = somaDin(rec), cart = somaCartao(rec), taxa = somaTaxa(rec);
     const aReceber = soma(devendo(d7.pedidos));
     const dias = Array.from({ length: 7 }, (_, i) => somaDias(de, i)).map((d) => ({ dia: d, rot: `${diaSemana(d)} ${br(d)}`, curto: diaSemana(d), v: liquido(rec.filter((p) => ymd(p.pago_em) === d)) }));
+    const diasH = dias.map((d) => Object.assign({}, d, { hoje: d.dia === hoje }));
     const porServico = agruparProdutos(real.map((p) => ({ itens: (p.itens || []).filter((i) => i.tipo !== "outros") })));
     el.innerHTML = `<section class="cartao"><h2>Serviços · últimos 7 dias</h2><p class="pequeno suave">${esc(br(de))} a ${esc(br(hoje))}</p>
       <div class="kpis">
@@ -132,10 +117,11 @@
       </div>
       ${porServico.length ? `<h3 style="margin-top:1rem">Serviços realizados, por serviço</h3>${barras(porServico.slice(0, 12).map((x) => ({ rot: x.rot, v: x.qtd })), (v) => String(v))}` : ""}
       <h3 style="margin-top:1rem">Recebido com serviços por dia${taxa ? " (líquido, já sem a taxa do cartão)" : ""}</h3>
-      ${colunas(dias, C.dinheiro)}
+      ${colunas(diasH, C.dinheiro, "Recebido com serviços por dia")}
       <button class="link" data-ver="tab-cortes">Ver números</button>
       <div id="tab-cortes" class="oculto">${tabela(["Dia", "Recebido"], dias.map((d) => [esc(d.rot), C.dinheiro(d.v)]))}</div></section>`;
     alternarTabela(el);
+    GRAFICOS.ligar(el, diasH, C.dinheiro); GRAFICOS.animar(el);
   }
 
   function agruparProdutos(ps) {
@@ -149,13 +135,21 @@
   function secaoProdutos(el) {
     const hoje = d7.hoje, de = somaDias(hoje, -6);
     const vendas = recebidos(d7.pedidos, de, hoje).filter((p) => p.tipo === "produto");
-    const lista = agruparProdutos(vendas), total = soma(vendas);
+    const lista = agruparProdutos(vendas), total = soma(vendas), taxa = somaTaxa(vendas);
+    const dias = Array.from({ length: 7 }, (_, i) => somaDias(de, i)).map((d) => ({ dia: d, hoje: d === hoje, rot: `${diaSemana(d)} ${br(d)}`, curto: diaSemana(d),
+      v: liquido(vendas.filter((p) => ymd(p.pago_em) === d)) }));
     el.innerHTML = `<section class="cartao"><h2>Produtos · últimos 7 dias</h2><p class="pequeno suave">${esc(br(de))} a ${esc(br(hoje))}</p>
       <div class="kpis">${tile("Valor total com produtos", C.dinheiro(total))}${tile("Unidades vendidas", lista.reduce((s, x) => s + x.qtd, 0))}
-        ${somaTaxa(vendas) ? tile("Líquido (sem a taxa do cartão)", C.dinheiro(liquido(vendas))) : ""}</div>
-      ${lista.length ? `<h3 style="margin-top:1rem">Mais vendidos (quantidade)</h3>${barras(lista.slice(0, 10).map((x) => ({ rot: x.rot, v: x.qtd })), (v) => v + " un.")}
+        ${tile("Vendas", vendas.length, vendas.length ? `ticket médio ${C.dinheiro(total / vendas.length)}` : "")}
+        ${taxa ? tile("Líquido (sem a taxa do cartão)", C.dinheiro(liquido(vendas))) : ""}</div>
+      ${lista.length ? `<h3 style="margin-top:1rem">Vendido em produtos por dia${taxa ? " (líquido)" : ""}</h3>${colunas(dias, C.dinheiro, "Vendido em produtos por dia")}
+        <button class="link" data-ver="tab-prod-dias">Ver números</button>
+        <div id="tab-prod-dias" class="oculto">${tabela(["Dia", "Vendido"], dias.map((d) => [esc(d.rot), C.dinheiro(d.v)]))}</div>
+        <h3 style="margin-top:1rem">Mais vendidos (quantidade)</h3>${barras(lista.slice(0, 10).map((x) => ({ rot: x.rot, v: x.qtd })), (v) => v + " un.")}
         <h3 style="margin-top:1rem">Vendidos no período</h3>${tabela(["Produto", "Quantidade", "Valor"], lista.map((x) => [esc(x.rot), x.qtd, C.dinheiro(x.valor)]))}`
         : `<p class="suave pequeno" style="margin-top:1rem">Nenhum produto vendido nos últimos 7 dias.</p>`}</section>`;
+    alternarTabela(el);
+    GRAFICOS.ligar(el, dias, C.dinheiro); GRAFICOS.animar(el);
   }
 
   /* ---------- relatórios ---------- */
@@ -212,14 +206,14 @@
       `<button class="btn mini sec btn-excluir" data-excluir="${p.id}" aria-label="Excluir venda de ${esc(p.cliente_nome)}">${U.icone("lixeira")}Excluir</button>`]);
     const resumo = { titulo, de, ate, vendas, cortes, prods, real, linhas, pix: somaPix(vendas), din: somaDin(vendas), deb: somaDeb(vendas), cred: somaCred(vendas), taxa: somaTaxa(vendas) };
     saida.innerHTML = `<h3 style="margin-top:1rem">${esc(titulo)}</h3>
-      <div class="kpis">${tile("Serviços", C.dinheiro(soma(cortes)), `${cortes.length} recebimento(s)`)}${tile("Produtos", C.dinheiro(soma(prods)), `${prods.length} venda(s)`)}
+      <div class="kpis">${!A().modulos || A().modulos().servicos ? tile("Serviços", C.dinheiro(soma(cortes)), `${cortes.length} recebimento(s)`) : ""}${tile("Produtos", C.dinheiro(soma(prods)), `${prods.length} venda(s)`)}
         ${tile("Pix", C.dinheiro(resumo.pix))}${tile("Dinheiro", C.dinheiro(resumo.din))}
         ${resumo.deb + resumo.cred || dados.aceita_debito || dados.aceita_credito ? tile("Cartão", C.dinheiro(resumo.deb + resumo.cred), `débito ${C.dinheiro(resumo.deb)} · crédito ${C.dinheiro(resumo.cred)}`) : ""}
         ${resumo.taxa ? tile("Taxa da maquininha", "−" + C.dinheiro(resumo.taxa), "descontada pelo banco") : ""}</div>
       <div class="total-banda${resumo.taxa ? " com-taxa" : ""}">${resumo.taxa
         ? `${tile("Total líquido", C.dinheiro(soma(vendas) - resumo.taxa), "já sem a taxa do cartão")}${tile("Total geral", C.dinheiro(soma(vendas)), "antes da taxa")}`
         : tile("Total geral", C.dinheiro(soma(vendas)))}</div>
-      <p class="pequeno suave">Serviços realizados no período: <b>${contaServicos(real)}</b>${(() => { const l = agruparProdutos(real.map((p) => ({ itens: (p.itens || []).filter((i) => i.tipo !== "outros") }))); return l.length ? " (" + l.map((x) => `${x.qtd} ${esc(x.rot)}`).join(", ") + ")" : ""; })()}. À prazo pago entra no dia em que foi pago.</p>
+      ${!A().modulos || A().modulos().servicos ? `<p class="pequeno suave">Serviços realizados no período: <b>${contaServicos(real)}</b>${(() => { const l = agruparProdutos(real.map((p) => ({ itens: (p.itens || []).filter((i) => i.tipo !== "outros") }))); return l.length ? " (" + l.map((x) => `${x.qtd} ${esc(x.rot)}`).join(", ") + ")" : ""; })()}. À prazo pago entra no dia em que foi pago.</p>` : `<p class="pequeno suave">À prazo pago entra no dia em que foi pago.</p>`}
       ${vendas.length ? tabela(["Quando", "Cliente", "Itens", "Pagamento", "Valor", ""], linhasTela, "tabela-vendas") : `<p class="suave pequeno">Nenhuma venda no período.</p>`}
       <div class="linha-acoes"><button class="btn sec" id="r-pdf"${vendas.length ? "" : " disabled"}>Baixar PDF</button></div>`;
     $("#r-pdf", el).onclick = () => pdf(resumo);

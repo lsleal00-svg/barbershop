@@ -9,29 +9,30 @@
 
   function tela(corpo) {
     const b = A().b(), hs = b.horarios || {};
+    const comIntervalo = A().modulos().intervalo, v = A().vocab();
     corpo.innerHTML = `
       <section class="cartao"><h2>Horário de funcionamento</h2>
-        <p class="pequeno suave">Marque os dias em que a barbearia abre. O status <b>aberto/fechado</b> passa a seguir este horário sozinho, e o agendamento só oferece horários dentro dele. O almoço é opcional: durante ele a barbearia aparece como “Em almoço”.</p>
+        <p class="pequeno suave">Marque os dias em que ${v.a} ${v.negocio} abre. O status <b>aberto/fechado</b> passa a seguir este horário sozinho${A().modulos().agendamento ? ", e o agendamento só oferece horários dentro dele" : ""}. O almoço é opcional: durante ele ${v.a} ${v.negocio} aparece como “Em almoço”.</p>
         <div class="dias">${ORDEM.map((d) => linhaDia(d, hs[String(d)])).join("")}</div>
         <div class="linha-acoes">
           <button class="btn" id="h-salvar"${dis()}>Salvar horário</button>
           <button class="btn sec" id="h-copiar"${dis()}>Copiar o 1º dia marcado para os outros</button>
           ${H.temHorario(b.horarios) ? `<button class="btn sec" id="h-apagar"${dis()}>Apagar horário</button>` : ""}
         </div>
-        ${H.temHorario(b.horarios) ? "" : `<p class="pequeno suave" style="margin-top:.6rem">Sem horário cadastrado, você abre e fecha manualmente em Configurações, e o agendamento aceita qualquer dia e hora.</p>`}
+        ${H.temHorario(b.horarios) ? "" : `<p class="pequeno suave" style="margin-top:.6rem">Sem horário cadastrado, você abre e fecha manualmente em Configurações${comIntervalo ? ", e o agendamento aceita qualquer dia e hora" : ""}.</p>`}
       </section>
-      <section class="cartao" style="margin-top:1rem"><h2>Intervalo entre agendamentos</h2>
+      ${!comIntervalo ? "" : `<section class="cartao" style="margin-top:1rem"><h2>Intervalo entre agendamentos</h2>
         <p class="pequeno suave">Tempo mínimo entre um agendamento e o próximo. Ao agendar, o cliente só vê horários com pelo menos esse espaço.</p>
         <div class="linha-intervalo"><input id="h-intervalo" type="number" inputmode="numeric" min="5" max="240" value="${b.intervalo_min || 35}" aria-label="Minutos"><span>minutos</span>
           <button class="btn sec" id="h-int-salvar"${dis()}>Salvar</button></div>
-      </section>`;
+      </section>`}`;
     $$(".dia [data-abre]").forEach((cb) => (cb.onchange = () => ligarDia(cb.closest(".dia"))));
     $$(".dia [data-almoco]").forEach((cb) => (cb.onchange = () => ligarDia(cb.closest(".dia"))));
     $$(".dia").forEach(ligarDia);
     $("#h-salvar").onclick = salvar;
     $("#h-copiar").onclick = copiar;
     if ($("#h-apagar")) $("#h-apagar").onclick = apagar;
-    $("#h-int-salvar").onclick = async () => {
+    if ($("#h-int-salvar")) $("#h-int-salvar").onclick = async () => {
       const v = Math.round(Number($("#h-intervalo").value));
       if (!(v >= 5 && v <= 240)) return U.aviso("Use de 5 a 240 minutos.", "erro");
       try { await A().salvarBarbearia({ intervalo_min: v }); U.aviso("Intervalo salvo."); } catch (err) { U.aviso(err.message, "erro"); }
