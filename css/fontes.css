@@ -1,0 +1,52 @@
+/* fontes.css — as 6 fontes que o dono (ou o Wilson) escolhe, todas gratuitas (SIL OFL) e servidas do próprio site.
+   O navegador só baixa os arquivos da fonte que estiver em uso.
+   --ui = textos; --num = títulos, preços e números; --titulo-caixa = maiúsculas nos títulos (só a condensada usa). */
+@font-face { font-family: "Inter"; src: url("../fontes/inter-latin-300-normal.woff2") format("woff2"); font-weight: 300; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("../fontes/inter-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("../fontes/inter-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("../fontes/inter-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("../fontes/inter-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("../fontes/inter-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("../fontes/poppins-latin-300-normal.woff2") format("woff2"); font-weight: 300; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("../fontes/poppins-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("../fontes/poppins-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("../fontes/poppins-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("../fontes/poppins-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Poppins"; src: url("../fontes/poppins-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Montserrat"; src: url("../fontes/montserrat-latin-300-normal.woff2") format("woff2"); font-weight: 300; font-display: swap; }
+@font-face { font-family: "Montserrat"; src: url("../fontes/montserrat-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Montserrat"; src: url("../fontes/montserrat-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Montserrat"; src: url("../fontes/montserrat-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Montserrat"; src: url("../fontes/montserrat-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Montserrat"; src: url("../fontes/montserrat-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("../fontes/nunito-latin-300-normal.woff2") format("woff2"); font-weight: 300; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("../fontes/nunito-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("../fontes/nunito-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("../fontes/nunito-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("../fontes/nunito-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Nunito"; src: url("../fontes/nunito-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+@font-face { font-family: "Playfair Display"; src: url("../fontes/playfair-display-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Playfair Display"; src: url("../fontes/playfair-display-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Playfair Display"; src: url("../fontes/playfair-display-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Playfair Display"; src: url("../fontes/playfair-display-latin-800-normal.woff2") format("woff2"); font-weight: 800; font-display: swap; }
+
+:root { --titulo-caixa: uppercase; --peso-num: 800; --esp-titulo: .01em; }
+/* Barlow Condensed (a fonte original da barbearia): títulos condensados em maiúsculas, texto na fonte do aparelho */
+[data-fonte="barlow"] { --ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; --num: "Etiqueta", "Arial Narrow", system-ui, sans-serif; --titulo-caixa: uppercase; --peso-num: 800; }
+[data-fonte="inter"] { --ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; --num: "Inter", system-ui, sans-serif;
+  --titulo-caixa: none; --peso-num: 700; --esp-titulo: -.015em; }
+[data-fonte="poppins"] { --ui: "Poppins", system-ui, sans-serif; --num: "Poppins", system-ui, sans-serif;
+  --titulo-caixa: none; --peso-num: 600; --esp-titulo: -.01em; }
+[data-fonte="montserrat"] { --ui: "Montserrat", system-ui, sans-serif; --num: "Montserrat", system-ui, sans-serif;
+  --titulo-caixa: none; --peso-num: 700; --esp-titulo: -.01em; }
+[data-fonte="nunito"] { --ui: "Nunito", system-ui, sans-serif; --num: "Nunito", system-ui, sans-serif;
+  --titulo-caixa: none; --peso-num: 800; --esp-titulo: 0; }
+/* Playfair Display é de título: os textos ficam em Inter para continuarem fáceis de ler */
+[data-fonte="playfair"] { --ui: "Inter", system-ui, sans-serif; --num: "Playfair Display", Georgia, serif;
+  --titulo-caixa: none; --peso-num: 700; --esp-titulo: 0; }
+/* a Poppins e a Montserrat são largas: números grandes um pouco menores para caber nas etiquetas */
+[data-fonte="poppins"] .preco b, [data-fonte="montserrat"] .preco b { font-size: 1.32rem; }
+/* a Playfair tem números de texto (alturas diferentes): nos valores usamos os números alinhados */
+[data-fonte="playfair"] body, [data-fonte="playfair"] .g-dica b { font-variant-numeric: lining-nums; }
+[data-fonte="playfair"] :is(.preco b, .heroi, .valor-kpi, .contador-pend, .fi-pos, .num, .tabela td, .pos, .codigo, .codigo-grande, .relogio-hora, .roda-op) { font-variant-numeric: lining-nums tabular-nums; }
+[data-fonte="playfair"] .grafico text { font-variant-numeric: lining-nums tabular-nums; }

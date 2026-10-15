@@ -1,0 +1,194 @@
+/* elegante.css — estilo "Elegante": cristal de relógio.
+   O conteúdo fica sob blocos de vidro translúcido (cantos suaves, uma luz fina no topo como o
+   bisel de um cristal) sobre um fundo claro banhado pela cor do tema. Mesmos tokens de cor do
+   estilo Comum; só a matéria muda. Vale para o app do cliente, o painel e o controle. */
+
+[data-estilo="elegante"] {
+  --raio: 14px; --raio-bloco: 20px; --raio-chip: 999px;
+  --luz: var(--casca);
+  --vidro: color-mix(in srgb, var(--cartao) 48%, transparent);
+  --vidro-forte: color-mix(in srgb, var(--cartao) 78%, transparent);
+  --vidro-item: color-mix(in srgb, color-mix(in srgb, var(--cartao) 92%, var(--casca)) 54%, transparent);
+  --vidro-borda: rgba(255, 255, 255, .7);
+  --vidro-topo: rgba(255, 255, 255, .98);
+  --vidro-fio: color-mix(in srgb, var(--tinta) 9%, transparent);
+  --vidro-sombra: 0 1px 2px color-mix(in srgb, var(--casca) 8%, transparent), 0 18px 40px -22px color-mix(in srgb, var(--casca) 55%, transparent);
+  --sombra: var(--vidro-sombra);
+  --sombra-alta: 0 2px 6px rgba(0, 0, 0, .06), 0 30px 70px -24px color-mix(in srgb, var(--casca) 55%, rgba(0, 0, 0, .4));
+  --titulo-caixa: none;
+  --peso-num: 600;
+  --desfoque: blur(18px) saturate(165%);
+}
+[data-estilo="elegante"][data-tema="escuro"] {
+  --luz: #e9b949; --poca-1: 26%; --poca-2: 16%; --poca-3: 12%; --poca-4: 6%;
+  --vidro: rgba(32, 32, 36, .58); --vidro-forte: rgba(30, 30, 34, .86); --vidro-item: rgba(34, 34, 38, .66);
+  --vidro-borda: rgba(255, 255, 255, .1); --vidro-topo: rgba(255, 255, 255, .18); --vidro-fio: rgba(255, 255, 255, .08);
+  --vidro-sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 22px 46px -24px rgba(0, 0, 0, .8);
+}
+[data-estilo="elegante"][data-tema="amarelo"] { --luz: #e2b400; }
+[data-estilo="elegante"][data-fonte="inter"], [data-estilo="elegante"][data-fonte="poppins"], [data-estilo="elegante"][data-fonte="montserrat"] { --peso-num: 500; }
+
+/* ---------- o chão: luz da cor do tema atrás do vidro ---------- */
+[data-estilo="elegante"] body {
+  background:
+    radial-gradient(900px 620px at 8% -8%, color-mix(in srgb, var(--luz) var(--poca-1, 38%), transparent), transparent 62%),
+    radial-gradient(760px 560px at 105% 18%, color-mix(in srgb, var(--luz) var(--poca-2, 26%), transparent), transparent 60%),
+    radial-gradient(800px 600px at 40% 115%, color-mix(in srgb, var(--luz) var(--poca-3, 18%), transparent), transparent 62%),
+    radial-gradient(700px 520px at 50% 55%, color-mix(in srgb, var(--luz) var(--poca-4, 16%), transparent), transparent 65%),
+    var(--fundo);
+  background-attachment: fixed;
+}
+[data-estilo="elegante"] h1, [data-estilo="elegante"] h2, [data-estilo="elegante"] h3 { letter-spacing: -.012em; }
+
+/* ---------- blocos de cristal ---------- */
+[data-estilo="elegante"] .cartao {
+  position: relative; border-radius: var(--raio-bloco); padding: 1.2rem;
+  background: var(--vidro); -webkit-backdrop-filter: var(--desfoque); backdrop-filter: var(--desfoque);
+  border: 1px solid var(--vidro-borda); box-shadow: inset 0 1.5px 0 var(--vidro-topo), var(--vidro-sombra);
+}
+[data-estilo="elegante"] .cartao h2, [data-estilo="elegante"] .cartao > h3:first-child { font-size: 1.28rem; letter-spacing: -.01em; }
+/* a luz que passa pelo cristal quando ele aparece (a posição é animada pelo GSAP; parada, fica fora do bloco) */
+[data-estilo="elegante"] :is(.cartao, .item-card .etiqueta-corpo, .destaques, .modal)::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, .5) 50%, transparent 62%) no-repeat;
+  background-size: 260% 100%; background-position: var(--varrer, 140%) 0; opacity: var(--brilho, 0);
+}
+[data-estilo="elegante"][data-tema="escuro"] :is(.cartao, .item-card .etiqueta-corpo, .destaques, .modal)::after {
+  background-image: linear-gradient(105deg, transparent 38%, rgba(255, 236, 190, .16) 50%, transparent 62%);
+}
+
+/* ---------- casca: barra de cristal tingida ---------- */
+[data-estilo="elegante"] :is(.cabeca, .topo-app, .topo-ctrl) {
+  background: color-mix(in srgb, var(--casca) 80%, transparent); -webkit-backdrop-filter: blur(22px) saturate(170%); backdrop-filter: blur(22px) saturate(170%);
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .16), 0 10px 30px -18px color-mix(in srgb, var(--casca) 70%, rgba(0, 0, 0, .5));
+}
+[data-estilo="elegante"] .fixo { box-shadow: none; }
+[data-estilo="elegante"] .fixo .cabeca { box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .14); }
+[data-estilo="elegante"] .cabeca h1, [data-estilo="elegante"] .topo-app .nome { letter-spacing: -.01em; }
+[data-estilo="elegante"] .barra-cat { background: color-mix(in srgb, var(--cor-barra) 72%, transparent); -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%); gap: .45rem; }
+[data-estilo="elegante"] .topo-app .abas { background: color-mix(in srgb, var(--casca-2) 70%, transparent); }
+[data-estilo="elegante"] .busca-linha input { border-radius: var(--raio-chip); padding-inline: 1.1rem; background: color-mix(in srgb, var(--casca-texto) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--casca-texto) 22%, transparent); }
+
+/* ---------- chips em pílula ---------- */
+[data-estilo="elegante"] .chip { border-radius: var(--raio-chip); padding: .45rem 1rem; font-weight: 600;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cor-barra-texto) 30%, transparent); }
+[data-estilo="elegante"] .chip[aria-pressed="true"] { box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .45); }
+[data-estilo="elegante"] .chip.acao { border-style: solid; border-color: color-mix(in srgb, currentColor 40%, transparent); }
+
+/* ---------- botões e campos ---------- */
+[data-estilo="elegante"] .btn { border-radius: 12px; font-weight: 600; letter-spacing: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 8px 20px -12px color-mix(in srgb, var(--destaque) 80%, transparent); }
+[data-estilo="elegante"] .btn.sec { background: var(--vidro-forte); color: var(--tinta); box-shadow: inset 0 0 0 1px var(--vidro-fio), inset 0 1px 0 var(--vidro-topo); }
+[data-estilo="elegante"] .btn.sec:hover:not(:disabled) { background: color-mix(in srgb, var(--cartao) 96%, transparent); }
+[data-estilo="elegante"] .btn.perigo { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 8px 20px -12px var(--vermelho); }
+[data-estilo="elegante"] .btn.mini { border-radius: 10px; }
+[data-estilo="elegante"] :is(input, select, textarea) { border-radius: 12px; background: color-mix(in srgb, var(--campo) 78%, transparent);
+  border-color: color-mix(in srgb, var(--tinta) 12%, transparent); }
+[data-estilo="elegante"] label { letter-spacing: .01em; font-weight: 600; text-transform: none; font-size: .84rem; }
+/* no cristal os rótulos pequenos não gritam: sem maiúsculas, espaçamento suave */
+[data-estilo="elegante"] :is(.aparencia legend, .grupo legend, .caixa-hoje .rotulo-kpi, .total-banda .rotulo-kpi, .tabela th, .total-receber span, .troco-res span, .pg-situacao span, .separador, .rotulo-previa) {
+  text-transform: none; letter-spacing: .01em; }
+[data-estilo="elegante"] :is(.aparencia legend, .grupo legend, .tabela th, .rotulo-previa) { font-size: .84rem; }
+[data-estilo="elegante"] .selo { border-radius: var(--raio-chip); padding: .22rem .6rem; font-weight: 700; letter-spacing: .04em; }
+[data-estilo="elegante"] .status-pill { border-radius: var(--raio-chip); padding: .28rem .7rem; }
+[data-estilo="elegante"] .codigo { border-radius: 8px; }
+
+/* ---------- itens: cartões de cristal, foto embutida ---------- */
+[data-estilo="elegante"] .item-card { filter: none; }
+[data-estilo="elegante"] .etiqueta-corpo { clip-path: none; padding-top: .55rem; border-radius: var(--raio-bloco); overflow: hidden;
+  background: var(--vidro-item); border: 1px solid var(--vidro-borda); box-shadow: inset 0 1.5px 0 var(--vidro-topo), var(--vidro-sombra);
+  transition: transform 260ms var(--ease-out), box-shadow 260ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  [data-estilo="elegante"] .item-card:hover .etiqueta-corpo { transform: translateY(-2px); box-shadow: inset 0 1px 0 var(--vidro-topo), 0 26px 50px -26px color-mix(in srgb, var(--casca) 70%, transparent); }
+}
+[data-estilo="elegante"] .etiqueta-corpo::before { display: none; }
+[data-estilo="elegante"] .item-foto { margin: 0 .55rem; border-radius: 14px; overflow: hidden; background: color-mix(in srgb, var(--casca) 7%, var(--cartao)); }
+[data-estilo="elegante"] .item-foto img { border-radius: 14px; }
+[data-estilo="elegante"] .item-info { padding: .7rem .85rem .75rem; }
+[data-estilo="elegante"] .item-info h3 { font-weight: 600; }
+[data-estilo="elegante"] .preco b { letter-spacing: -.01em; }
+[data-estilo="elegante"] .item-acoes { background: transparent; background-image: none; border-top: 1px solid var(--vidro-fio); padding: .6rem; }
+[data-estilo="elegante"] .item-acoes::before, [data-estilo="elegante"] .item-acoes::after { display: none; }
+[data-estilo="elegante"] .item-acoes .btn { border-radius: 10px; }
+[data-estilo="elegante"] .item-acoes:has(> .btn:only-child) { padding: .6rem; }
+[data-estilo="elegante"] .item-acoes > .btn:only-child { border-radius: 12px; min-height: 44px; }
+[data-estilo="elegante"] .item-card.balanca { animation: none; }
+[data-estilo="elegante"] .etiqueta-desconto { top: .7rem; left: .7rem; width: auto; height: auto; padding: .22rem .6rem; border-radius: var(--raio-chip); transform: none;
+  font-size: .82rem; font-weight: 700; box-shadow: 0 6px 14px -8px var(--vermelho); }
+[data-estilo="elegante"] .etiqueta-destaque { border-radius: var(--raio-chip); top: .7rem; right: .7rem; padding: .22rem .6rem; letter-spacing: .04em;
+  background: color-mix(in srgb, var(--cartao) 82%, transparent); color: var(--tinta); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+[data-estilo="elegante"] .etiqueta-esgotado { transform: translate(-50%, -50%); border-width: 1px; border-radius: var(--raio-chip); font-size: .92rem; letter-spacing: .14em;
+  padding: .3rem .9rem; background: color-mix(in srgb, var(--cartao) 86%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+/* ---------- vitrine de destaques ---------- */
+[data-estilo="elegante"] .destaques { border-radius: 24px; background: color-mix(in srgb, var(--casca) 84%, transparent);
+  -webkit-backdrop-filter: var(--desfoque); backdrop-filter: var(--desfoque); border: 1px solid rgba(255, 255, 255, .18);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 30px 60px -30px color-mix(in srgb, var(--casca) 80%, transparent); }
+[data-estilo="elegante"] .slide img { transform: none; border: 0; border-radius: 18px;
+  box-shadow: 0 10px 22px -14px color-mix(in srgb, var(--casca) 55%, #000 45%), inset 0 0 0 1px rgba(255, 255, 255, .45); }
+[data-estilo="elegante"] .slide { padding-bottom: 1.3rem; }
+[data-estilo="elegante"] .slide h3 { letter-spacing: -.02em; }
+[data-estilo="elegante"] .selo-destaque, [data-estilo="elegante"] .selo-off { border-radius: var(--raio-chip); padding: .22rem .65rem; text-transform: none; letter-spacing: .01em; font-size: .74rem; }
+[data-estilo="elegante"] .etiqueta-destaque { text-transform: none; letter-spacing: .01em; }
+[data-estilo="elegante"] .seta { border-radius: 50%; }
+[data-estilo="elegante"] .pontos span { height: 4px; border-radius: 4px; }
+
+/* ---------- fila do cliente ---------- */
+[data-estilo="elegante"] .fila-barbeiro { background-image: none; border-bottom: 1px solid var(--vidro-fio); }
+[data-estilo="elegante"] .fila-barbeiro:last-of-type { border-bottom: 0; }
+[data-estilo="elegante"] .bloco-barbeiro { border-radius: 16px; outline: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25); }
+[data-estilo="elegante"] .bloco-cliente { border-radius: 16px; background: var(--vidro-forte); box-shadow: inset 0 0 0 1px var(--vidro-fio), inset 0 1px 0 var(--vidro-topo); }
+[data-estilo="elegante"] .bloco-cliente.atendendo { outline: 0; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 10px 22px -14px var(--verde); }
+[data-estilo="elegante"] .bloco-vazio { border-radius: 16px; outline-style: solid; outline-width: 1px; outline-color: var(--vidro-fio); }
+
+/* ---------- barras de baixo (pedido, comanda) ---------- */
+[data-estilo="elegante"] :is(.barra-pedido, .pdv-comanda) { background: var(--vidro-forte); -webkit-backdrop-filter: blur(24px) saturate(170%); backdrop-filter: blur(24px) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--vidro-topo), 0 -18px 40px -24px rgba(0, 0, 0, .35); }
+[data-estilo="elegante"] :is(.barra-pedido, .pdv-comanda)::before { display: none; }
+
+/* ---------- janelas ---------- */
+[data-estilo="elegante"] .modal-fundo { background: color-mix(in srgb, var(--tinta) 32%, rgba(10, 12, 18, .25)); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+[data-estilo="elegante"] .modal { position: relative; background: var(--vidro-forte); -webkit-backdrop-filter: blur(28px) saturate(170%); backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid var(--vidro-borda); box-shadow: inset 0 1px 0 var(--vidro-topo), var(--sombra-alta); border-radius: 24px 24px 0 0; }
+@media (min-width: 640px) { [data-estilo="elegante"] .modal { border-radius: 24px; } }
+[data-estilo="elegante"] .modal-topo h2 { font-size: 1.32rem; letter-spacing: -.01em; }
+[data-estilo="elegante"] .modal-rodape { background-image: none; border-top: 1px solid var(--vidro-fio); }
+[data-estilo="elegante"] .fechar { border-radius: 50%; }
+[data-estilo="elegante"] .aviso { border-radius: 14px; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); background: color-mix(in srgb, var(--tinta) 88%, transparent); }
+[data-estilo="elegante"] .aviso.erro { background: color-mix(in srgb, var(--vermelho) 92%, transparent); }
+
+/* ---------- entrada (login) ---------- */
+[data-estilo="elegante"] .entrada { background: transparent; }
+[data-estilo="elegante"] .entrada .cartao { border-radius: 26px; padding-top: 2rem; }
+[data-estilo="elegante"] .entrada .cartao::before { display: none; }
+[data-estilo="elegante"] .separador::before, [data-estilo="elegante"] .separador::after { background-image: none; background: var(--vidro-fio); }
+
+/* ---------- linhas, listas e tabelas: fio contínuo no lugar do picote ---------- */
+[data-estilo="elegante"] :is(.linha-item, .ag-serv, .cmd-linha) { background-image: none; border-bottom: 1px solid var(--vidro-fio); }
+[data-estilo="elegante"] :is(.pend-acoes, .modal-rodape, .item .acoes, .caixa-hoje-liquido) { background-image: none; border-top: 1px solid var(--vidro-fio); }
+[data-estilo="elegante"] .caixa-hoje-liquido { border-top-color: rgba(255, 255, 255, .22); }
+[data-estilo="elegante"] :is(.pedido-linha, .ag-item) { background-image: none; border-bottom: 1px solid var(--vidro-fio); }
+@media (max-width: 639px) { [data-estilo="elegante"] .tabela-vendas tr { background-image: none; border-bottom: 1px solid var(--vidro-fio); } }
+[data-estilo="elegante"] :is(.linha-item, .ag-serv, .cmd-linha):last-child { border-bottom: 0; }
+[data-estilo="elegante"] .lista-rolagem { border-radius: 16px; background: color-mix(in srgb, var(--cartao) 55%, transparent); box-shadow: inset 0 0 0 1px var(--vidro-fio); }
+[data-estilo="elegante"] .vazio-cardapio { border-radius: var(--raio-bloco); outline-style: solid; outline-width: 1px; outline-color: var(--vidro-fio); background: var(--vidro); }
+
+/* ---------- acessibilidade: quem pede menos transparência recebe vidro sólido ---------- */
+@media (prefers-reduced-transparency: reduce) {
+  [data-estilo="elegante"] { --vidro: var(--cartao); --vidro-forte: var(--cartao); --desfoque: none; }
+  [data-estilo="elegante"] :is(.cabeca, .topo-app, .topo-ctrl, .barra-cat, .modal, .barra-pedido, .pdv-comanda, .destaques, .cartao) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  [data-estilo="elegante"] :is(.cabeca, .topo-app, .topo-ctrl) { background: var(--casca); }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  [data-estilo="elegante"] { --vidro: color-mix(in srgb, var(--cartao) 92%, transparent); --vidro-forte: var(--cartao); }
+}
+
+/* ---------- painel: o total do dia e as faixas de total continuam na cor do tema, como um cristal tingido ---------- */
+[data-estilo="elegante"] .cartao.caixa-hoje { background: color-mix(in srgb, var(--casca) 88%, transparent); color: var(--casca-texto); border-color: rgba(255, 255, 255, .2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 26px 50px -26px color-mix(in srgb, var(--casca) 85%, transparent); }
+[data-estilo="elegante"] :is(.total-banda, .total-receber) { border-radius: 16px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25); }
+[data-estilo="elegante"] .kpi { border-radius: 14px; background: color-mix(in srgb, var(--cartao) 55%, transparent); box-shadow: inset 0 0 0 1px var(--vidro-fio), inset 0 1px 0 var(--vidro-topo); }
+[data-estilo="elegante"] .caixa-menu button { border-radius: 12px; }
+[data-estilo="elegante"] :is(.pendente, .fila-item, .membro, .pedido-linha, .ag-item, .devedor, .cat-linha, .opcao, .forma-seg, .pg-linha) { border-radius: 14px; }
+[data-estilo="elegante"] .tabela-rolar { border-radius: 14px; }

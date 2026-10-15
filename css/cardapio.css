@@ -35,17 +35,17 @@
 .item-card.esgotado .item-foto img { filter: grayscale(1); opacity: .45; }
 /* adesivo de remarcação */
 .etiqueta-desconto { position: absolute; top: -10px; left: -6px; display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%;
-  background: var(--vermelho); color: #fff; font-family: var(--num); font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; transform: rotate(-12deg);
+  background: var(--vermelho); color: #fff; font-family: var(--num); font-weight: var(--peso-num); font-size: 1.05rem; letter-spacing: -.01em; transform: rotate(-12deg);
   box-shadow: 0 2px 5px rgba(0, 0, 0, .25), inset 0 0 0 2px rgba(255, 255, 255, .35); }
 .etiqueta-destaque { position: absolute; top: 6px; right: 6px; display: inline-flex; align-items: center; gap: .2rem; background: var(--tinta); color: var(--cartao); font-weight: 800; font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; padding: .2rem .45rem; border-radius: 2px; }
 /* carimbo de esgotado */
 .etiqueta-esgotado { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-14deg); padding: .15rem .6rem; border: 3px solid var(--vermelho);
-  border-radius: 4px; color: var(--vermelho); background: color-mix(in srgb, var(--cartao) 78%, transparent); font-family: var(--num); font-weight: 800; font-size: 1.35rem;
-  text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+  border-radius: 4px; color: var(--vermelho); background: color-mix(in srgb, var(--cartao) 78%, transparent); font-family: var(--num); font-weight: var(--peso-num); font-size: 1.35rem;
+  text-transform: var(--titulo-caixa); letter-spacing: .08em; white-space: nowrap; }
 .item-info { padding: .6rem .75rem .7rem; display: grid; gap: .15rem; align-content: start; }
 .item-info h3 { font-size: .95rem; font-weight: 700; margin: 0; line-height: 1.25; overflow-wrap: anywhere; }
 .preco { display: flex; align-items: baseline; gap: .4rem; flex-wrap: wrap; font-size: .95rem; }
-.preco b { font-family: var(--num); font-weight: 800; font-size: 1.55rem; line-height: 1.05; letter-spacing: -.005em; }
+.preco b { font-family: var(--num); font-weight: var(--peso-num); font-size: 1.55rem; line-height: 1.05; letter-spacing: -.005em; }
 .preco s { color: var(--suave); font-size: .82rem; font-variant-numeric: tabular-nums; }
 /* canhoto picotado com os botões */
 .item-acoes { position: relative; display: flex; flex-wrap: wrap; gap: .3rem; padding: .65rem .55rem .6rem; margin-top: auto; background-color: color-mix(in srgb, var(--casca) 9%, var(--cartao));
@@ -74,7 +74,7 @@
 .slide { flex: 0 0 100%; scroll-snap-align: start; display: grid; grid-template-columns: 112px 1fr; gap: 1rem; align-items: center; padding: .1rem .1rem .7rem; }
 @media (min-width: 640px) { .slide { grid-template-columns: 168px 1fr; } }
 .slide img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 3px; background: var(--cartao); border: 5px solid var(--cartao); box-shadow: 0 6px 16px rgba(0, 0, 0, .22); transform: rotate(-2.5deg); }
-.slide h3 { font-family: var(--num); font-weight: 800; font-size: 1.9rem; line-height: .98; text-transform: uppercase; margin: .45rem 0 .25rem; color: var(--casca-texto); overflow-wrap: anywhere; }
+.slide h3 { font-family: var(--num); font-weight: var(--peso-num); font-size: 1.9rem; line-height: .98; text-transform: var(--titulo-caixa); margin: .45rem 0 .25rem; color: var(--casca-texto); overflow-wrap: anywhere; }
 .slide .preco b { font-size: 1.6rem; }
 .slide .preco s { color: var(--casca-suave); }
 .selo-destaque, .selo-off { display: inline-block; font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: .2rem .45rem; border-radius: 2px; background: var(--casca-texto); color: var(--casca); }
