@@ -7,9 +7,9 @@
 .cabeca .barra { display: flex; align-items: center; gap: .75rem; padding: .7rem 1rem .55rem; max-width: 900px; margin: 0 auto; }
 .cabeca img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; background: #fff; flex: none; border: 0;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--casca-texto) 85%, transparent), 0 2px 6px rgba(0, 0, 0, .25); }
-.logo-vazio { width: 48px; height: 48px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--casca-texto); color: var(--casca); font-family: var(--num); font-weight: 800; font-size: 1.2rem; }
+.logo-vazio { width: 48px; height: 48px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--casca-texto); color: var(--casca); font-family: var(--num); font-weight: var(--peso-num); font-size: 1.2rem; }
 .cab-textos { flex: 1; min-width: 0; display: grid; gap: .2rem; justify-items: start; }
-.cabeca h1 { font-family: var(--num); font-weight: 800; font-size: 1.45rem; line-height: 1; text-transform: uppercase; letter-spacing: .01em; margin: 0;
+.cabeca h1 { font-family: var(--num); font-weight: var(--peso-num); font-size: 1.45rem; line-height: 1; text-transform: var(--titulo-caixa); letter-spacing: .01em; margin: 0;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .cab-textos .status-pill { white-space: normal; line-height: 1.25; }
 .cabeca .barra .btn { flex: none; background: var(--casca-texto); color: var(--casca); }
@@ -25,12 +25,12 @@
 /* ---------- corpo ---------- */
 .corpo-cli { max-width: 900px; margin: 0 auto; padding: 1rem 1rem 4rem; display: grid; gap: 1.15rem; }
 .corpo-cli > * { min-width: 0; }
-.titulo-lista { font-family: var(--num); font-weight: 800; font-size: 1.7rem; line-height: 1; text-transform: uppercase; letter-spacing: .01em; margin: .6rem 0 .85rem; }
+.titulo-lista { font-family: var(--num); font-weight: var(--peso-num); font-size: 1.7rem; line-height: 1; text-transform: var(--titulo-caixa); letter-spacing: .01em; margin: .6rem 0 .85rem; }
 .indisponivel { min-height: 100vh; display: grid; place-items: center; text-align: center; padding: 2rem 1rem;
   background: linear-gradient(var(--casca) 0 30vh, var(--fundo) 30vh); }
 .indisponivel > div { background: var(--cartao); border-radius: var(--raio); padding: 2rem 1.4rem 1.6rem; max-width: 380px; box-shadow: var(--sombra-alta); }
 .indisponivel img { width: 110px; height: 110px; margin: 0 auto 1rem; border-radius: 50%; object-fit: cover; background: #fff; border: 0; box-shadow: var(--sombra); filter: grayscale(1); opacity: .8; }
-.indisponivel h1 { font-family: var(--num); font-weight: 800; font-size: 1.7rem; text-transform: uppercase; line-height: 1.05; }
+.indisponivel h1 { font-family: var(--num); font-weight: var(--peso-num); font-size: 1.7rem; text-transform: var(--titulo-caixa); line-height: 1.05; }
 
 /* ---------- fila: barbeiros como etiquetas tecidas ---------- */
 .fila-cli h2 { margin-bottom: .3rem; }
@@ -50,7 +50,7 @@
 .bloco-cliente { background: var(--cartao); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tinta) 16%, var(--linha)); }
 .bloco-cliente b { font-size: .92rem; overflow-wrap: anywhere; }
 .bloco-cliente small { color: var(--suave); font-size: .74rem; }
-.bloco-cliente .pos { font-family: var(--num); font-weight: 800; font-size: 1.35rem; line-height: 1; color: var(--tinta); font-variant-numeric: tabular-nums; }
+.bloco-cliente .pos { font-family: var(--num); font-weight: var(--peso-num); font-size: 1.35rem; line-height: 1; color: var(--tinta); font-variant-numeric: tabular-nums; }
 .bloco-cliente.atendendo { background: var(--verde); color: #fff; box-shadow: none; outline: 1px dashed rgba(255, 255, 255, .6); outline-offset: -4px; }
 .bloco-cliente.atendendo small { color: rgba(255, 255, 255, .9); font-weight: 700; }
 .bloco-cliente.agendado { box-shadow: inset 0 0 0 1.5px var(--roxo); background: color-mix(in srgb, var(--roxo) 7%, var(--cartao)); }
@@ -83,7 +83,7 @@ body.com-barra .corpo-cli { padding-bottom: 6.75rem; }
 .linha-item .qtd .tirar svg { width: 18px; height: 18px; }
 .linha-item .qtd .tirar:hover:not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--vermelho); }
 .total-linha { font-size: 1.05rem; text-align: right; margin: .8rem 0 .25rem; }
-.total-linha b { font-family: var(--num); font-weight: 800; font-size: 1.6rem; }
+.total-linha b { font-family: var(--num); font-weight: var(--peso-num); font-size: 1.6rem; }
 .opcoes { display: grid; gap: .5rem; }
 .opcao { display: grid; gap: .15rem; text-align: left; padding: .85rem .95rem; border: 0; border-radius: var(--raio); background: var(--campo); color: var(--tinta); font: inherit; cursor: pointer; min-height: 56px;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tinta) 16%, var(--linha)); transition: box-shadow 160ms ease, transform 140ms var(--ease-out), background-color 160ms ease; }
@@ -112,7 +112,7 @@ body.com-barra .corpo-cli { padding-bottom: 6.75rem; }
 
 /* lista de serviços com rolagem própria (Pedir / Agendar corte) */
 .servicos-cab { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .4rem; }
-.servicos-cab b { font-family: var(--num); font-weight: 800; font-size: 1.15rem; text-transform: uppercase; letter-spacing: .02em; }
+.servicos-cab b { font-family: var(--num); font-weight: var(--peso-num); font-size: 1.15rem; text-transform: var(--titulo-caixa); letter-spacing: .02em; }
 .lista-rolagem { max-height: min(46vh, 340px); overflow-y: auto; overscroll-behavior: contain; padding: 0 .5rem; border-radius: var(--raio);
   box-shadow: inset 0 0 0 1px var(--linha); background: color-mix(in srgb, var(--cartao) 92%, var(--fundo)); }
 .lista-rolagem .linha-item:last-child { background-image: none; }

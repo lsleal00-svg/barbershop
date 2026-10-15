@@ -1,4 +1,5 @@
-/* cliente.js — página do cliente de cada barbearia (?b=apelido-da-barbearia).
+/* cliente.js — página do cliente de cada negócio (?b=apelido): barbearia, loja de variedades…
+   O tipo do negócio (b.modulos) esconde o que ele não usa: fila, serviços, agendamento.
    Cardápio, fila por barbeiro, pedir/agendar corte, carrinho de produtos,
    pagamento (Pix com valor, dinheiro, à prazo) e acompanhamento do pedido. */
 (function () {
@@ -17,7 +18,8 @@
   /* ---------- utilidades ---------- */
   const norm = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const tipoDe = (it) => (cats.find((c) => c.id === it.categoria_id) || {}).tipo;
-  const visiveis = () => itens.filter((i) => !i.esgotado);
+  // serviços só aparecem quando o tipo do negócio tem serviços
+  const visiveis = () => itens.filter((i) => !i.esgotado && (U.modulos(b).servicos || C.ehProduto(tipoDe(i))));
   const aberta = () => H.situacao(b).aberto;
   const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } };
   const ler = (k, padrao) => { try { return JSON.parse(localStorage.getItem(k)) || padrao; } catch (e) { return padrao; } };
@@ -38,14 +40,15 @@
     return id;
   }
   const quando = (iso) => new Date(iso).toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: b.fuso || "America/Sao_Paulo" });
+  const mod = () => U.modulos(b);
+  const V = () => U.vocab(b);
   const iniciais = (n) => String(n || "?").trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 
   function trocarIdentidade() {
     document.title = b.nome;
     $("#apple-titulo").setAttribute("content", b.nome.slice(0, 20));
     if (b.logo192_url) { $("#favicon").href = b.logo192_url; $("#apple-icon").href = b.logo_url || b.logo192_url; }
-    document.documentElement.dataset.tema = b.tema || "claro";
-    U.corDaBarra();
+    U.aparencia(b);
     if (b.cor_barra) {
       const n = parseInt(b.cor_barra.slice(1), 16), luz = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
       document.documentElement.style.setProperty("--cor-barra", b.cor_barra);
@@ -70,7 +73,7 @@
           <div class="cab-textos"><h1>${esc(b.nome)}</h1>${statusHtml()}</div>
           ${U.instalado() ? "" : `<button class="btn mini" id="instalar">${U.icone("baixar")}Instalar app</button>`}
         </div>
-        <div class="busca-linha"><input id="busca" type="search" placeholder="Buscar serviço ou produto…" aria-label="Buscar" autocomplete="off"></div>
+        <div class="busca-linha"><input id="busca" type="search" placeholder="${mod().servicos ? "Buscar serviço ou produto…" : "Buscar produto…"}" aria-label="Buscar" autocomplete="off"></div>
         </header>
         <nav class="barra-cat" id="cats" aria-label="Categorias"></nav>
       </div>
@@ -141,8 +144,9 @@
   function desenharFila() {
     const alvo = $("#fila");
     if (!alvo) return;
-    alvo.classList.toggle("oculto", !!b.esconder_fila);   // o dono escolheu esconder a fila
-    if (b.esconder_fila) { alvo.innerHTML = ""; return; }
+    const semFila = !!b.esconder_fila || !mod().fila;   // o dono escondeu a fila, ou o tipo não tem fila (loja)
+    alvo.classList.toggle("oculto", semFila);
+    if (semFila) { alvo.innerHTML = ""; return; }
     const temServico = visiveis().some((i) => tipoDe(i) !== "outros");
     if (!barbeiros.length) {
       alvo.innerHTML = `<div class="cartao"><h2>Fila online</h2><p class="pequeno suave">Nenhum barbeiro atendendo pelo app no momento.</p></div>`;
@@ -309,7 +313,7 @@
       }));
     };
     desenhar();
-    if (!aberta()) U.aviso("A barbearia está fechada: produtos só podem ser pedidos com ela aberta.", "erro");
+    if (!aberta()) U.aviso(`${V().Negocio} está fechada: produtos só podem ser pedidos com ela aberta.`, "erro");
   }
 
   /* "Pedir corte" / "Agendar corte" a partir da fila de um barbeiro. */
@@ -371,7 +375,7 @@
     function pQuando() {
       const ab = aberta();
       j.mostrar("O corte é agora ou agendado?", `<div class="opcoes">
-          <button class="opcao" data-q="agora"${ab ? "" : " disabled"}><b>Agora</b><small>${ab ? "Entrar na fila de hoje" : "A barbearia está fechada agora"}</small></button>
+          <button class="opcao" data-q="agora"${ab ? "" : " disabled"}><b>Agora</b><small>${ab ? "Entrar na fila de hoje" : `${V().Negocio} está fechada agora`}</small></button>
           <button class="opcao" data-q="agendar"><b>Agendar</b><small>Escolher dia e horário</small></button></div>`, []);
       $$("[data-q]", j.el).forEach((bt) => (bt.onclick = () => { e.quando = bt.dataset.q; passo(); }));
     }
@@ -398,13 +402,13 @@
         }
         e.forma = bt.dataset.f; e.prazo_data = null; passo();
       }));
-      if (!formas.length) $(".modal-corpo", j.el).insertAdjacentHTML("beforeend", `<p class="suave">Nenhuma forma de pagamento disponível. Fale com a barbearia.</p>`);
+      if (!formas.length) $(".modal-corpo", j.el).insertAdjacentHTML("beforeend", `<p class="suave">Nenhuma forma de pagamento disponível. Fale com ${V().a} ${V().negocio}.</p>`);
     }
     function pDados() {
       j.mostrar("Seus dados", `
         <div class="campo"><label for="d-nome">Seu nome</label><input id="d-nome" maxlength="60" autocomplete="name" value="${esc(e.nome)}"></div>
         ${precisaZap() ? `<div class="campo"><label for="d-zap">WhatsApp com DDD</label><input id="d-zap" type="tel" inputmode="tel" autocomplete="tel" placeholder="(91) 98888-7777" value="${esc(e.whatsapp)}">
-          <p class="pequeno suave">${e.forma === "prazo" ? "Para a barbearia combinar o pagamento com você." : "Para a barbearia avisar sobre o seu horário."}</p></div>` : ""}`, [
+          <p class="pequeno suave">${e.forma === "prazo" ? `Para ${V().a} ${V().negocio} combinar o pagamento com você.` : `Para ${V().a} ${V().negocio} avisar sobre o seu horário.`}</p></div>` : ""}`, [
         { rotulo: "Voltar", classe: "sec", acao: () => { delete e.forma; passo(); } },
         { rotulo: "Continuar", acao: () => {
           const nome = $("#d-nome", j.el).value.trim();
@@ -490,7 +494,7 @@
       statusAntigo[r.id] = "pendente/";
       await atualizar();
       const pix = r.pix ? PIX.copiaECola(Object.assign({}, r.pix, { valor: r.total, txid: "BS" + r.id.replace(/-/g, "").slice(0, 20) })) : null;
-      j.mostrar("Pedido enviado!", `<p>Seu pedido foi enviado para ${e.tipo === "servico" ? `<b>${esc(e.barbeiro.nome)}</b>` : "a barbearia"}. Aguarde a aprovação: você acompanha em <b>Meus pedidos</b>.</p>
+      j.mostrar("Pedido enviado!", `<p>Seu pedido foi enviado para ${e.tipo === "servico" ? `<b>${esc(e.barbeiro.nome)}</b>` : `${V().a} ${V().negocio}`}. Aguarde a aprovação: você acompanha em <b>Meus pedidos</b>.</p>
         ${pix ? `<div class="pix-pagar"><p><b>Pague ${C.dinheiro(r.total)} com Pix</b></p>${U.qrSvg(pix, 220)}
           <p class="pequeno">Para: ${esc(r.pix.titular)} · ${esc(PIX.NOMES[r.pix.tipo])}: ${esc(PIX.mostrarChave(r.pix.tipo, r.pix.chave))}</p>
           <p class="pequeno suave">Depois de pagar, mostre o comprovante. O barbeiro confirma e aprova o seu pedido.</p></div>` : ""}
@@ -542,7 +546,7 @@
   async function atualizar() {
     try {
       const [f, m] = await Promise.all([
-        S.rpc("fila_publica", { p_barbearia: b.id }),
+        mod().fila ? S.rpc("fila_publica", { p_barbearia: b.id }) : [],
         S.rpc("meus_pedidos", { p_barbearia: b.id, p_dispositivo: aparelho() }),
       ]);
       barbeiros = f || []; meus = m || [];
@@ -571,10 +575,10 @@
 
   (async function () {
     if (!S.configurado()) return telaSimples("Em configuração", "Este sistema ainda não foi configurado.");
-    if (!slug) return telaSimples("Barbearia não encontrada", "Confira o link que você recebeu.");
+    if (!slug) return telaSimples("Página não encontrada", "Confira o link que você recebeu.");
     try { b = await S.rpc("barbearia_publica", { p_slug: slug }); }
     catch (err) { return telaSimples("Sem conexão", esc(err.message)); }
-    if (!b) return telaSimples("Barbearia não encontrada", "Confira o link que você recebeu.");
+    if (!b) return telaSimples("Página não encontrada", "Confira o link que você recebeu.");
     trocarIdentidade();
     if (!b.disponivel) return telaSimples(b.nome, "Temporariamente indisponível. Tente novamente mais tarde.", b.logo192_url);
     try {
@@ -584,7 +588,7 @@
       ]);
     } catch (err) { cats = []; itens = []; }
     lerSacola();
-    try { [barbeiros, meus] = await Promise.all([S.rpc("fila_publica", { p_barbearia: b.id }), S.rpc("meus_pedidos", { p_barbearia: b.id, p_dispositivo: aparelho() })]); }
+    try { [barbeiros, meus] = await Promise.all([mod().fila ? S.rpc("fila_publica", { p_barbearia: b.id }) : [], S.rpc("meus_pedidos", { p_barbearia: b.id, p_dispositivo: aparelho() })]); }
     catch (err) { barbeiros = []; meus = []; }
     barbeiros = barbeiros || []; meus = meus || [];
     meus.forEach((p) => (statusAntigo[p.id] = p.status + "/" + (p.fila_status || "")));
